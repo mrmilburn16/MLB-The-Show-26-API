@@ -1208,6 +1208,85 @@ tr:hover .card-name-text:hover {
   background: rgba(74,106,138,0.15); color: #4a6a8a;
 }
 
+/* ── Table toolbar (above table: reset + column gear) ── */
+.table-toolbar {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 8px; padding: 6px 2px 6px; margin-bottom: 2px;
+}
+.toolbar-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 11px; border-radius: 7px; font-size: 11px;
+  font-family: 'Space Mono', monospace; font-weight: 600;
+  border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04);
+  color: #6a8aa0; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.toolbar-btn:hover { background: rgba(255,255,255,0.09); color: #c0d4e4; border-color: rgba(255,255,255,0.18); }
+
+/* ── Gear button ── */
+.col-gear-wrap { position: relative; }
+.col-gear-btn--active { background: rgba(77,166,255,0.1); color: #4da6ff; border-color: rgba(77,166,255,0.3); }
+.col-hidden-count {
+  display: inline-block; padding: 0 5px; border-radius: 8px;
+  background: rgba(248,113,113,0.2); color: #f87171; font-size: 10px;
+}
+
+/* ── Column visibility menu (floating) ── */
+.col-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 200;
+  width: 190px; background: #0f1923; border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  overflow: hidden;
+}
+.col-menu-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 13px; border-bottom: 1px solid rgba(255,255,255,0.07);
+  font-size: 11px; font-weight: 700; color: #8abadd;
+  font-family: 'Orbitron', sans-serif; letter-spacing: 0.5px;
+}
+.col-menu-close {
+  background: none; border: none; color: #4a6a8a; cursor: pointer;
+  font-size: 14px; padding: 0; line-height: 1;
+}
+.col-menu-close:hover { color: #c0d4e4; }
+.col-menu-list { padding: 6px 0; max-height: 320px; overflow-y: auto; }
+.col-menu-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 13px; cursor: pointer; transition: background 0.1s;
+  font-size: 11px; color: #8abadd; font-family: 'Space Mono', monospace;
+}
+.col-menu-item:hover { background: rgba(255,255,255,0.04); }
+.col-menu-item input[type="checkbox"] { accent-color: #4da6ff; cursor: pointer; }
+.col-menu-reset {
+  width: 100%; padding: 8px 13px; border-top: 1px solid rgba(255,255,255,0.07);
+  background: none; border-left: none; border-right: none; border-bottom: none;
+  color: #4a6a8a; font-size: 10px; font-family: 'Space Mono', monospace;
+  cursor: pointer; text-align: left; transition: color 0.15s;
+}
+.col-menu-reset:hover { color: #c0d4e4; }
+
+/* ── Draggable column headers ── */
+.col-draggable { user-select: none; cursor: grab; position: relative; }
+.col-draggable:active { cursor: grabbing; }
+
+/* Grip icon — hidden until hover */
+.col-drag-grip {
+  display: inline-block; opacity: 0; margin-right: 4px;
+  font-size: 12px; color: #4a6a8a; transition: opacity 0.15s;
+  vertical-align: middle; cursor: grab;
+}
+.col-draggable:hover .col-drag-grip { opacity: 1; }
+
+/* Drop indicator — blue line on the before/after side of the target column */
+.th-drop-before::before,
+.th-drop-after::after {
+  content: ''; position: absolute; top: 0; bottom: 0;
+  width: 3px; background: #4da6ff; border-radius: 2px;
+  box-shadow: 0 0 8px rgba(77,166,255,0.7);
+  pointer-events: none; z-index: 10;
+}
+.th-drop-before::before { left: -1px; }
+.th-drop-after::after   { right: -1px; }
+
 /* ── Near QS table cell values ── */
 .nqs-val-hot   { color: #f87171; font-weight: 700; }   /* < 1% — on fire */
 .nqs-val-near  { color: #fbbf24; font-weight: 600; }   /* 1-5%  — near QS */

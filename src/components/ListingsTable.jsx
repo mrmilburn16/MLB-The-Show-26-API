@@ -1,40 +1,49 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { rarityColors, fmt, fmtProfit, profitClass, marginColor } from '../utils/format'
+import CopyableName from './CopyableName'
 
-const SORT_COLS = [
-  { key: 'best_buy_price',  label: 'BUY'       },
-  { key: 'best_sell_price', label: 'SELL'       },
-  { key: 'profit_per_min',  label: 'PROFIT/MIN' },
-  { key: 'snipe_discount',  label: 'SNIPE%'     },
+// ── localStorage keys ─────────────────────────────────────────────────────────
+const COLUMN_ORDER_KEY = 'stubflipper_column_order'
+const HIDDEN_COLS_KEY  = 'stubflipper_hidden_cols'
+
+const SNIPE_THRESHOLD      = 10
+const SNIPE_GOOD_THRESHOLD = 5
+
+// ── Column definitions ─────────────────────────────────────────────────────────
+// sortKey  = API/client sort identifier passed to onSort()
+// thStyle  = extra style on <th>
+// thTitle  = tooltip on <th>
+const COLUMN_DEFS = [
+  { key: 'card',           label: 'CARD',       minWidth: 260, align: 'left' },
+  { key: 'ovr',            label: 'OVR' },
+  { key: 'pos',            label: 'POS' },
+  { key: 'series',         label: 'SERIES' },
+  { key: 'buy',            label: 'BUY',        sortKey: 'best_buy_price' },
+  { key: 'sell',           label: 'SELL',       sortKey: 'best_sell_price' },
+  { key: 'profit_per_min', label: 'PROFIT/MIN', sortKey: 'profit_per_min' },
+  { key: 'snipe_pct',      label: 'SNIPE%',     sortKey: 'snipe_discount' },
+  { key: 'qs_prem',        label: 'QS PREM%',   sortKey: 'qs_premium',
+    thStyle: { color: '#fbbf24' },
+    thTitle: 'Buy-now price vs quicksell floor — lower = safer buy' },
+  { key: 'qs',             label: 'QS' },
+  { key: 'spread_pct',     label: 'SPREAD%' },
+  { key: 'profit',         label: 'PROFIT' },
+  { key: 'margin',         label: 'MARGIN' },
+  { key: 'sales_min',      label: 'SALES/MIN' },
 ]
 
-const SNIPE_THRESHOLD      = 10   // % → green highlight + badge
-const SNIPE_GOOD_THRESHOLD = 5    // % → amber highlight
+const DEFAULT_COLUMN_ORDER = COLUMN_DEFS.map(c => c.key)
+const COL_MAP = Object.fromEntries(COLUMN_DEFS.map(c => [c.key, c]))
 
-function CopyableName({ name }) {
-  const [copied, setCopied] = useState(false)
-  const timerRef = useRef(null)
-
-  const handleClick = useCallback(e => {
-    e.stopPropagation()
-    navigator.clipboard.writeText(name).then(() => {
-      setCopied(true)
-      clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => setCopied(false), 1500)
-    }).catch(() => {})
-  }, [name])
-
-  return (
-    <span
-      className={`card-name-text${copied ? ' card-name-text--copied' : ''}`}
-      onClick={handleClick}
-      title="Click to copy"
-    >
-      {copied ? <><span className="copy-check">✓</span> Copied!</> : name}
-    </span>
-  )
+/** Merge a saved order with the canonical default — handles new/removed columns gracefully */
+function mergeColumnOrder(saved) {
+  if (!Array.isArray(saved)) return DEFAULT_COLUMN_ORDER
+  const valid   = saved.filter(k => DEFAULT_COLUMN_ORDER.includes(k))
+  const missing = DEFAULT_COLUMN_ORDER.filter(k => !valid.includes(k))
+  return [...valid, ...missing]
 }
 
+// ── Sub-components ─────────────────────────────────────────────────────────────
 function SortArrow({ active, order }) {
   if (!active) return <span style={{ opacity: 0.25 }}>↕</span>
   return <span>{order === 'desc' ? '▼' : '▲'}</span>
@@ -49,11 +58,9 @@ function VelCell({ value, loaded, formatter, color }) {
 function SnipeCell({ value, loaded }) {
   if (!loaded) return <span className="vel-cell-loading">···</span>
   if (value == null) return <span className="muted">—</span>
-
   const isHot  = value >= SNIPE_THRESHOLD
   const isGood = value >= SNIPE_GOOD_THRESHOLD && !isHot
   const color  = isHot ? '#4ade80' : isGood ? '#fbbf24' : value > 0 ? '#c8d6e5' : '#f87171'
-
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
       <span className="mono" style={{ color, fontWeight: 700 }}>
@@ -67,7 +74,6 @@ function SnipeCell({ value, loaded }) {
 function SpreadCell({ value, loaded, isWide }) {
   if (!loaded) return <span className="vel-cell-loading">···</span>
   if (value == null) return <span className="muted">—</span>
-
   const color = value > 50 ? '#f87171' : value > 20 ? '#fbbf24' : '#c8d6e5'
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
@@ -77,6 +83,37 @@ function SpreadCell({ value, loaded, isWide }) {
   )
 }
 
+// ── Column visibility menu ─────────────────────────────────────────────────────
+function ColumnMenu({ colOrder, hidden, onToggle, onReset, onClose }) {
+  return (
+    <div className="col-menu">
+      <div className="col-menu-header">
+        <span>Visible Columns</span>
+        <button className="col-menu-close" onClick={onClose}>✕</button>
+      </div>
+      <div className="col-menu-list">
+        {colOrder.map(key => {
+          const def = COL_MAP[key]
+          if (!def) return null
+          const isVisible = !hidden.has(key)
+          return (
+            <label key={key} className="col-menu-item">
+              <input
+                type="checkbox"
+                checked={isVisible}
+                onChange={() => onToggle(key)}
+              />
+              <span style={def.thStyle}>{def.label}</span>
+            </label>
+          )
+        })}
+      </div>
+      <button className="col-menu-reset" onClick={onReset}>↺ Reset to Default</button>
+    </div>
+  )
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
 export default function ListingsTable({
   listings, sort, order, page,
   onSort, onSelectCard, onVisible, selectedUuid, wideSpreadUuids, newEntryUUIDs,
@@ -85,10 +122,40 @@ export default function ListingsTable({
   const rowRefs     = useRef(new Map())
   const observerRef = useRef(null)
 
-  // ── IntersectionObserver: lazy-request velocity/snipe on scroll ──
+  // ── Column order ──────────────────────────────────────────────────────────
+  const [colOrder, setColOrder] = useState(() => {
+    try {
+      return mergeColumnOrder(JSON.parse(localStorage.getItem(COLUMN_ORDER_KEY)))
+    } catch { return DEFAULT_COLUMN_ORDER }
+  })
+
+  // ── Hidden columns ────────────────────────────────────────────────────────
+  const [hidden, setHidden] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(HIDDEN_COLS_KEY))
+      if (Array.isArray(saved)) return new Set(saved.filter(k => DEFAULT_COLUMN_ORDER.includes(k)))
+    } catch {}
+    return new Set()
+  })
+
+  const [showColMenu, setShowColMenu] = useState(false)
+
+  // ── Drag state ────────────────────────────────────────────────────────────
+  const [dropTarget, setDropTarget] = useState(null)  // { key, side: 'before'|'after' }
+  const dragKeyRef   = useRef(null)
+
+  // ── Persist column prefs ──────────────────────────────────────────────────
+  useEffect(() => {
+    try { localStorage.setItem(COLUMN_ORDER_KEY, JSON.stringify(colOrder)) } catch {}
+  }, [colOrder])
+
+  useEffect(() => {
+    try { localStorage.setItem(HIDDEN_COLS_KEY, JSON.stringify([...hidden])) } catch {}
+  }, [hidden])
+
+  // ── IntersectionObserver: lazy velocity fetching ──────────────────────────
   useEffect(() => {
     if (!onVisible || typeof IntersectionObserver === 'undefined') return
-
     observerRef.current = new IntersectionObserver(
       (entries) => {
         entries.forEach(entry => {
@@ -100,7 +167,6 @@ export default function ListingsTable({
       },
       { rootMargin: '300px 0px', threshold: 0 },
     )
-
     rowRefs.current.forEach(el => observerRef.current.observe(el))
     return () => observerRef.current?.disconnect()
   }, [listings, onVisible])
@@ -118,46 +184,330 @@ export default function ListingsTable({
     }
   }
 
+  // ── Column actions ────────────────────────────────────────────────────────
+  const visibleCols = colOrder.filter(k => !hidden.has(k))
+
+  function toggleHidden(key) {
+    setHidden(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  function resetColumns() {
+    setColOrder(DEFAULT_COLUMN_ORDER)
+    setHidden(new Set())
+    setShowColMenu(false)
+  }
+
+  // ── Drag handlers ─────────────────────────────────────────────────────────
+  function handleDragStart(e, key) {
+    dragKeyRef.current = key
+    e.dataTransfer.effectAllowed = 'move'
+    // Set a ghost image so the default ghost isn't too ugly
+    e.dataTransfer.setData('text/plain', key)
+  }
+
+  function handleDragOver(e, key) {
+    e.preventDefault()
+    if (!dragKeyRef.current || dragKeyRef.current === key) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const side = e.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
+    setDropTarget(prev =>
+      prev?.key === key && prev?.side === side ? prev : { key, side }
+    )
+  }
+
+  function handleDrop(e, targetKey) {
+    e.preventDefault()
+    const fromKey = dragKeyRef.current
+    if (!fromKey || fromKey === targetKey) { setDropTarget(null); return }
+
+    const rect = e.currentTarget.getBoundingClientRect()
+    const side = e.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
+
+    setColOrder(prev => {
+      const arr       = prev.filter(k => k !== fromKey)
+      const targetIdx = arr.indexOf(targetKey)
+      if (targetIdx === -1) return prev
+      const insertAt  = side === 'before' ? targetIdx : targetIdx + 1
+      const next      = [...arr]
+      next.splice(insertAt, 0, fromKey)
+      return next
+    })
+
+    setDropTarget(null)
+    dragKeyRef.current = null
+  }
+
+  function handleDragEnd() {
+    setDropTarget(null)
+    dragKeyRef.current = null
+  }
+
+  // ── Header renderer ────────────────────────────────────────────────────────
+  function renderHeader(key) {
+    const def = COL_MAP[key]
+    if (!def) return null
+
+    const dropClass = dropTarget?.key === key ? `th-drop-${dropTarget.side}` : ''
+    const isSortable = !!def.sortKey
+
+    const thStyle = {
+      textAlign: def.align ?? 'center',
+      ...(def.minWidth ? { minWidth: def.minWidth } : {}),
+      ...(def.thStyle  ? def.thStyle               : {}),
+    }
+
+    return (
+      <th
+        key={key}
+        className={`col-draggable${dropClass ? ' ' + dropClass : ''}${isSortable ? ' sortable' : ''}`}
+        draggable
+        style={thStyle}
+        title={def.thTitle ?? (isSortable ? `Sort by ${def.label}` : `Drag to reorder`)}
+        onClick={isSortable ? () => onSort(def.sortKey) : undefined}
+        onDragStart={e => handleDragStart(e, key)}
+        onDragOver={e  => handleDragOver(e, key)}
+        onDrop={e      => handleDrop(e, key)}
+        onDragEnd={handleDragEnd}
+      >
+        <span className="col-drag-grip" title="Drag to reorder">⠿</span>
+        {def.label}
+        {isSortable && <SortArrow active={sort === def.sortKey} order={order} />}
+      </th>
+    )
+  }
+
+  // ── Data cell renderer ─────────────────────────────────────────────────────
+  function renderCell(key, l, ctx) {
+    const { item, r, pc, mc, mw, imgSrc, isNewEntry, isWideSpread, ppmColor } = ctx
+    switch (key) {
+      case 'card':
+        return (
+          <td key="card" style={{ textAlign: 'left' }}>
+            <div className="card-cell">
+              {imgSrc && (
+                <img
+                  className="card-img" src={imgSrc} alt=""
+                  onError={e => { e.currentTarget.style.display = 'none' }}
+                />
+              )}
+              <div>
+                <div className="card-name">
+                  <CopyableName name={l.listing_name || item.name || ''} />
+                  {isNewEntry && (
+                    <span className="new-entry-badge" title="Just entered top results">NEW</span>
+                  )}
+                  {l._premiumPct != null && l._premiumPct < 5 && (
+                    <span
+                      className={`near-qs-badge${l._premiumPct < 1 ? ' near-qs-badge--hot' : ''}`}
+                      title={`Buy-now is only ${l._premiumPct.toFixed(1)}% above quicksell — near risk-free buy`}
+                    >
+                      {l._premiumPct < 1 ? '🔥' : '~'}QS
+                    </span>
+                  )}
+                </div>
+                <div className="card-meta">
+                  <span className="rarity-badge" style={{ background: r.badge, color: r.text }}>
+                    {(item.rarity || '').toUpperCase()}
+                  </span>
+                  {item.team && <span className="team-name">{item.team}</span>}
+                  {item.series && item.series !== 'Live' && (
+                    <span className="series-name">{item.series}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </td>
+        )
+
+      case 'ovr':
+        return (
+          <td key="ovr" style={{ fontWeight: 700, color: r.glow, fontSize: 16 }}>
+            {item.ovr || '—'}
+          </td>
+        )
+
+      case 'pos':
+        return (
+          <td key="pos" style={{ color: '#aab' }}>{item.display_position || '—'}</td>
+        )
+
+      case 'series':
+        return (
+          <td key="series" style={{ color: '#667', fontSize: 11 }}>{item.series || '—'}</td>
+        )
+
+      case 'buy':
+        return (
+          <td key="buy" className="mono" style={{ fontWeight: 600 }}>
+            {l._bidBelowQS ? (
+              <span title="Bid is below quicksell floor — possible data error">
+                <span style={{ color: '#f87171' }}>{fmt(l.best_buy_price)}</span>
+                <span className="qs-warn-badge">⚠</span>
+              </span>
+            ) : l._buyIsQS ? (
+              <span className="qs-fallback-buy" title="No active bid — using quicksell floor">
+                {fmt(l._quicksellFloor)}<span className="qs-badge">QS</span>
+              </span>
+            ) : (
+              <span className="buy-color">{fmt(l.best_buy_price)}</span>
+            )}
+          </td>
+        )
+
+      case 'sell':
+        return (
+          <td key="sell" className="mono sell-color" style={{ fontWeight: 600 }}>
+            {fmt(l.best_sell_price)}
+          </td>
+        )
+
+      case 'profit_per_min':
+        return (
+          <td key="profit_per_min" className="mono" style={{ fontWeight: 700 }}>
+            <VelCell
+              value={l._profitPerMin}
+              loaded={l._velocityLoaded}
+              formatter={v => `${v >= 0 ? '+' : ''}${Math.round(v).toLocaleString()}`}
+              color={ppmColor}
+            />
+          </td>
+        )
+
+      case 'snipe_pct':
+        return (
+          <td key="snipe_pct">
+            <SnipeCell value={l._snipeDiscount} loaded={l._velocityLoaded} />
+          </td>
+        )
+
+      case 'qs_prem':
+        return (
+          <td key="qs_prem" className="mono" style={{ fontSize: 11 }}>
+            {l._premiumPct != null ? (
+              <span
+                className={l._premiumPct < 1 ? 'nqs-val-hot' : l._premiumPct < 5 ? 'nqs-val-near' : 'nqs-val-normal'}
+                title={`Buy-now is ${l._premiumPct.toFixed(1)}% above quicksell (${(l._premiumOverQS ?? 0).toLocaleString()} stubs)`}
+              >
+                {l._premiumPct.toFixed(1)}%
+              </span>
+            ) : '—'}
+          </td>
+        )
+
+      case 'qs':
+        return (
+          <td key="qs" className="mono" style={{ fontSize: 11 }}>
+            {l._quicksellFloor != null ? (
+              <span
+                className={l._isLive ? 'qs-live' : 'qs-nonlive'}
+                title={l._isLive ? 'Live Series quicksell' : 'Non-Live quicksell (est.)'}
+              >
+                {fmt(l._quicksellFloor)}
+              </span>
+            ) : (
+              <span style={{ color: '#334' }}>—</span>
+            )}
+          </td>
+        )
+
+      case 'spread_pct':
+        return (
+          <td key="spread_pct">
+            <SpreadCell value={l._spreadPct} loaded={l._velocityLoaded} isWide={isWideSpread} />
+          </td>
+        )
+
+      case 'profit':
+        return (
+          <td key="profit" className={`mono ${pc}`} style={{ fontWeight: 700 }}>
+            {fmtProfit(l._profitAfterTax)}
+          </td>
+        )
+
+      case 'margin':
+        return (
+          <td key="margin">
+            {mc != null ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+                <div className="margin-bar-outer">
+                  <div className="margin-bar-inner" style={{ width: `${mw}%`, background: mc }} />
+                </div>
+                <span className="mono" style={{ fontSize: 12, fontWeight: 600, color: mc, minWidth: 42, textAlign: 'right' }}>
+                  {l._margin.toFixed(1)}%
+                </span>
+              </div>
+            ) : '—'}
+          </td>
+        )
+
+      case 'sales_min':
+        return (
+          <td key="sales_min" className="mono" style={{ fontSize: 12 }}>
+            <VelCell
+              value={l._salesPerMin}
+              loaded={l._velocityLoaded}
+              formatter={v => v < 0.01 ? '<0.01' : v.toFixed(2)}
+              color="#34d399"
+            />
+          </td>
+        )
+
+      default:
+        return <td key={key}>—</td>
+    }
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="table-wrap">
+      {/* Toolbar: reset + column visibility */}
+      <div className="table-toolbar">
+        <button className="toolbar-btn" onClick={resetColumns} title="Restore default column order and show all columns">
+          ↺ Reset Columns
+        </button>
+        <div className="col-gear-wrap">
+          <button
+            className={`toolbar-btn col-gear-btn${showColMenu ? ' col-gear-btn--active' : ''}`}
+            onClick={() => setShowColMenu(v => !v)}
+            title="Show / hide columns"
+          >
+            ⚙ Columns {hidden.size > 0 && <span className="col-hidden-count">−{hidden.size}</span>}
+          </button>
+          {showColMenu && (
+            <ColumnMenu
+              colOrder={colOrder}
+              hidden={hidden}
+              onToggle={toggleHidden}
+              onReset={resetColumns}
+              onClose={() => setShowColMenu(false)}
+            />
+          )}
+        </div>
+      </div>
+
       <table>
         <thead>
           <tr>
             <th style={{ width: 50 }}>#</th>
-            <th style={{ textAlign: 'left', minWidth: 260 }}>CARD</th>
-            <th>OVR</th>
-            <th>POS</th>
-            <th>SERIES</th>
-            {SORT_COLS.map(col => (
-              <th key={col.key} className="sortable" onClick={() => onSort(col.key)}>
-                {col.label} <SortArrow active={sort === col.key} order={order} />
-              </th>
-            ))}
-            <th
-              className="sortable"
-              onClick={() => onSort('qs_premium')}
-              style={{ color: '#fbbf24' }}
-              title="Buy-now price vs quicksell floor — lower = safer buy"
-            >
-              QS PREM% <SortArrow active={sort === 'qs_premium'} order={order} />
-            </th>
-            <th>QS</th>
-            <th>SPREAD%</th>
-            <th>PROFIT</th>
-            <th>MARGIN</th>
-            <th>SALES/MIN</th>
+            {visibleCols.map(key => renderHeader(key))}
           </tr>
         </thead>
         <tbody>
           {listings.map((l, i) => {
-            const item      = l.item || {}
-            const r         = rarityColors(item.rarity)
-            const pc        = profitClass(l._profitAfterTax)
-            const num       = (page - 1) * perPage + i + 1
-            const mc        = l._margin != null ? marginColor(l._margin) : null
-            const mw        = l._margin != null ? Math.min(Math.max(l._margin, 0), 100) : 0
-            const imgSrc    = item.baked_img || item.img || ''
-            const uuid      = l.uuid || l.item?.uuid
+            const item    = l.item || {}
+            const r       = rarityColors(item.rarity)
+            const pc      = profitClass(l._profitAfterTax)
+            const mc      = l._margin != null ? marginColor(l._margin) : null
+            const mw      = l._margin != null ? Math.min(Math.max(l._margin, 0), 100) : 0
+            const imgSrc  = item.baked_img || item.img || ''
+            const uuid    = l.uuid || l.item?.uuid
+            const num     = (page - 1) * perPage + i + 1
+
             const isSelected   = selectedUuid === uuid
             const isSnipe      = l._snipeDiscount != null && l._snipeDiscount >= SNIPE_THRESHOLD
             const isSnipeGood  = l._snipeDiscount != null && l._snipeDiscount >= SNIPE_GOOD_THRESHOLD && !isSnipe
@@ -169,7 +519,6 @@ export default function ListingsTable({
               : l._profitPerMin > 0   ? '#c8d6e5'
               : '#f87171'
 
-            // Row background: new-entry > snipe > wide-spread > selected > none
             let rowBg
             if (isNewEntry)        rowBg = 'rgba(77,166,255,0.05)'
             else if (isSelected)   rowBg = 'rgba(77,166,255,0.07)'
@@ -184,6 +533,8 @@ export default function ListingsTable({
               isWideSpread ? 'row-wide-spread' : '',
             ].filter(Boolean).join(' ')
 
+            const ctx = { item, r, pc, mc, mw, imgSrc, isNewEntry, isWideSpread, ppmColor }
+
             return (
               <tr
                 key={uuid || i}
@@ -194,152 +545,7 @@ export default function ListingsTable({
                 onClick={() => onSelectCard(uuid)}
               >
                 <td style={{ color: '#556', fontSize: 12 }}>{num}</td>
-
-                {/* Card */}
-                <td style={{ textAlign: 'left' }}>
-                  <div className="card-cell">
-                    {imgSrc && (
-                      <img
-                        className="card-img"
-                        src={imgSrc}
-                        alt=""
-                        onError={e => { e.currentTarget.style.display = 'none' }}
-                      />
-                    )}
-                    <div>
-                      <div className="card-name">
-                        <CopyableName name={l.listing_name || item.name || ''} />
-                        {isNewEntry && (
-                          <span className="new-entry-badge" title="This card just entered the top results">
-                            NEW
-                          </span>
-                        )}
-                        {l._premiumPct != null && l._premiumPct < 5 && (
-                          <span
-                            className={`near-qs-badge${l._premiumPct < 1 ? ' near-qs-badge--hot' : ''}`}
-                            title={`Buy-now is only ${l._premiumPct.toFixed(1)}% above quicksell — near risk-free buy`}
-                          >
-                            {l._premiumPct < 1 ? '🔥' : '~'}QS
-                          </span>
-                        )}
-                      </div>
-                      <div className="card-meta">
-                        <span className="rarity-badge" style={{ background: r.badge, color: r.text }}>
-                          {(item.rarity || '').toUpperCase()}
-                        </span>
-                        {item.team && <span className="team-name">{item.team}</span>}
-                        {item.series && item.series !== 'Live' && (
-                          <span className="series-name">{item.series}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </td>
-
-                <td style={{ fontWeight: 700, color: r.glow, fontSize: 16 }}>{item.ovr || '—'}</td>
-                <td style={{ color: '#aab' }}>{item.display_position || '—'}</td>
-                <td style={{ color: '#667', fontSize: 11 }}>{item.series || '—'}</td>
-
-                {/* BUY — real bid, or QS floor as fallback */}
-                <td className="mono" style={{ fontWeight: 600 }}>
-                  {l._bidBelowQS ? (
-                    <span title="Bid is below quicksell floor — possible data error">
-                      <span style={{ color: '#f87171' }}>{fmt(l.best_buy_price)}</span>
-                      <span className="qs-warn-badge">⚠</span>
-                    </span>
-                  ) : l._buyIsQS ? (
-                    <span className="qs-fallback-buy" title="No active bid — using quicksell floor as buy price">
-                      {fmt(l._quicksellFloor)}
-                      <span className="qs-badge">QS</span>
-                    </span>
-                  ) : (
-                    <span className="buy-color">{fmt(l.best_buy_price)}</span>
-                  )}
-                </td>
-
-                {/* SELL */}
-                <td className="mono sell-color" style={{ fontWeight: 600 }}>
-                  {fmt(l.best_sell_price)}
-                </td>
-
-                {/* PROFIT/MIN (sortable) */}
-                <td className="mono" style={{ fontWeight: 700 }}>
-                  <VelCell
-                    value={l._profitPerMin}
-                    loaded={l._velocityLoaded}
-                    formatter={v => `${v >= 0 ? '+' : ''}${Math.round(v).toLocaleString()}`}
-                    color={ppmColor}
-                  />
-                </td>
-
-                {/* SNIPE% (sortable) */}
-                <td>
-                  <SnipeCell value={l._snipeDiscount} loaded={l._velocityLoaded} />
-                </td>
-
-                {/* QS PREM% — how close buy-now is to quicksell floor */}
-                <td className="mono" style={{ fontSize: 11 }}>
-                  {l._premiumPct != null ? (
-                    <span
-                      className={l._premiumPct < 1 ? 'nqs-val-hot' : l._premiumPct < 5 ? 'nqs-val-near' : 'nqs-val-normal'}
-                      title={`Buy-now is ${l._premiumPct.toFixed(1)}% above quicksell (${(l._premiumOverQS ?? 0).toLocaleString()} stubs)`}
-                    >
-                      {l._premiumPct.toFixed(1)}%
-                    </span>
-                  ) : '—'}
-                </td>
-
-                {/* QS — quicksell floor */}
-                <td className="mono" style={{ fontSize: 11 }}>
-                  {l._quicksellFloor != null ? (
-                    <span
-                      className={l._isLive ? 'qs-live' : 'qs-nonlive'}
-                      title={l._isLive ? 'Live Series quicksell' : 'Non-Live quicksell (est.)'}
-                    >
-                      {fmt(l._quicksellFloor)}
-                    </span>
-                  ) : (
-                    <span style={{ color: '#334' }}>—</span>
-                  )}
-                </td>
-
-                {/* SPREAD% */}
-                <td>
-                  <SpreadCell
-                    value={l._spreadPct}
-                    loaded={l._velocityLoaded}
-                    isWide={isWideSpread}
-                  />
-                </td>
-
-                {/* PROFIT (after 10% tax) */}
-                <td className={`mono ${pc}`} style={{ fontWeight: 700 }}>
-                  {fmtProfit(l._profitAfterTax)}
-                </td>
-
-                {/* MARGIN bar */}
-                <td>
-                  {mc != null ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
-                      <div className="margin-bar-outer">
-                        <div className="margin-bar-inner" style={{ width: `${mw}%`, background: mc }} />
-                      </div>
-                      <span className="mono" style={{ fontSize: 12, fontWeight: 600, color: mc, minWidth: 42, textAlign: 'right' }}>
-                        {l._margin.toFixed(1)}%
-                      </span>
-                    </div>
-                  ) : '—'}
-                </td>
-
-                {/* SALES/MIN */}
-                <td className="mono" style={{ fontSize: 12 }}>
-                  <VelCell
-                    value={l._salesPerMin}
-                    loaded={l._velocityLoaded}
-                    formatter={v => v < 0.01 ? '<0.01' : v.toFixed(2)}
-                    color="#34d399"
-                  />
-                </td>
+                {visibleCols.map(key => renderCell(key, l, ctx))}
               </tr>
             )
           })}

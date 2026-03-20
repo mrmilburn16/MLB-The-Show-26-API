@@ -460,6 +460,7 @@ export default function App() {
                 setUiSort('qs_premium')
                 setUiOrder('asc')
               }}
+              onSelectCard={handleSelectCard}
             />
           )}
 
