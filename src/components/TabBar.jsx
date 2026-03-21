@@ -2,6 +2,7 @@ const TABS = [
   { key: 'market',      label: '📊 Market',          hint: 'Live listings, flip metrics, snipe detector' },
   { key: 'fullscan',    label: '🔭 Full Scan',        hint: 'Fetch every card in the market and sort by any metric' },
   { key: 'scanner',     label: '🎯 Bargain Scanner',  hint: 'Multi-page sweep for cards priced below average' },
+  { key: 'cardfinder',  label: '🃏 Card Finder',      hint: 'Search every card by attribute thresholds' },
   { key: 'gamehistory', label: '📜 Game History',     hint: 'Look up any player\'s recent Diamond Dynasty game log' },
 ]
 

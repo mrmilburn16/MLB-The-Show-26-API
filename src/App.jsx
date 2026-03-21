@@ -15,6 +15,7 @@ import FullMarketScan    from './components/FullMarketScan'
 import NearQSPanel       from './components/NearQSPanel'
 import SnipeAlertBanner  from './components/SnipeAlertBanner'
 import GameHistory        from './components/GameHistory'
+import CardFinder        from './components/CardFinder'
 import ComparisonTray    from './components/ComparisonTray'
 import ComparisonModal   from './components/ComparisonModal'
 import { useListings }    from './hooks/useListings'
@@ -481,7 +482,7 @@ export default function App() {
 
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && (
+      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && (
         <PresetBar
           presets={presets}
           activeId={activePresetId}
@@ -495,7 +496,7 @@ export default function App() {
         />
       )}
 
-      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && (
+      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && (
         <FiltersBar
           filters={filters}
           onFilterChange={handleFilterChange}
@@ -538,6 +539,12 @@ export default function App() {
       {activeTab === 'gamehistory' && (
         <main className="main">
           <GameHistory />
+        </main>
+      )}
+
+      {activeTab === 'cardfinder' && (
+        <main className="main">
+          <CardFinder allListings={autoMarket.allListings} />
         </main>
       )}
 
