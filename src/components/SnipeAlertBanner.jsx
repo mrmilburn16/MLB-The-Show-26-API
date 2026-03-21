@@ -203,9 +203,12 @@ export default function SnipeAlertBanner({
       {/* ── Snipe History ── */}
       {hasHistory && (
         <div className="snipe-history-section">
-          <button
+          <div
             className="snipe-history-toggle"
+            role="button"
+            tabIndex={0}
             onClick={() => setHistoryOpen(o => !o)}
+            onKeyDown={e => e.key === 'Enter' && setHistoryOpen(o => !o)}
           >
             <span>{historyOpen ? '▾' : '▸'} Snipe History</span>
             <span className="snipe-history-count">{history.length} alert{history.length !== 1 ? 's' : ''} this session</span>
@@ -215,7 +218,7 @@ export default function SnipeAlertBanner({
                 Clear
               </button>
             )}
-          </button>
+          </div>
 
           {historyOpen && (
             <div className="snipe-history-list">

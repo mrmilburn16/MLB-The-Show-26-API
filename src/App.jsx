@@ -14,6 +14,7 @@ import BargainScanner    from './components/BargainScanner'
 import FullMarketScan    from './components/FullMarketScan'
 import NearQSPanel       from './components/NearQSPanel'
 import SnipeAlertBanner  from './components/SnipeAlertBanner'
+import GameHistory       from './components/GameHistory'
 import { useListings }    from './hooks/useListings'
 import { useAutoMarket }  from './hooks/useAutoMarket'
 import { useVelocity }    from './hooks/useVelocity'
@@ -447,7 +448,7 @@ export default function App() {
 
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {activeTab !== 'scanner' && (
+      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && (
         <PresetBar
           presets={presets}
           activeId={activePresetId}
@@ -461,7 +462,7 @@ export default function App() {
         />
       )}
 
-      {activeTab !== 'scanner' && (
+      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && (
         <FiltersBar
           filters={filters}
           onFilterChange={handleFilterChange}
@@ -498,6 +499,12 @@ export default function App() {
       {activeTab === 'scanner' && (
         <main className="main">
           <BargainScanner />
+        </main>
+      )}
+
+      {activeTab === 'gamehistory' && (
+        <main className="main">
+          <GameHistory />
         </main>
       )}
 

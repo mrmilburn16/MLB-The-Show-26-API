@@ -1743,3 +1743,228 @@ tr:hover .card-name-text:hover {
 .snipe-history-avail { text-align: right; font-size: 10px; font-weight: 700; }
 .snipe-history-avail--yes { color: #4ade80; }
 .snipe-history-avail--gone { color: #475569; }
+
+/* ══════════════════════════════════════════════════════════════
+   ── Game History Tab ───────────────────────────────────────── */
+
+.gh-wrap {
+  display: flex; flex-direction: column; gap: 20px;
+}
+
+/* ── Search Form ── */
+.gh-search-form {
+  background: rgba(13,21,32,0.7);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px;
+  padding: 20px 24px;
+}
+
+.gh-search-row {
+  display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap;
+}
+
+.gh-field {
+  display: flex; flex-direction: column; gap: 5px;
+}
+.gh-field--username { flex: 1 1 260px; }
+
+.gh-label {
+  font-size: 9px; letter-spacing: 1.5px; font-weight: 700;
+  color: #4a6a8a; text-transform: uppercase;
+}
+
+.gh-input {
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 8px; color: #e8eef5; font-size: 14px;
+  font-family: 'Space Mono', monospace; min-width: 220px;
+  transition: border-color 0.15s;
+}
+.gh-input:focus {
+  outline: none; border-color: rgba(77,166,255,0.4);
+  box-shadow: 0 0 0 2px rgba(77,166,255,0.12);
+}
+.gh-input::placeholder { color: #3a5a7a; }
+
+.gh-select {
+  padding: 10px 12px; background: #111820;
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 8px; color: #c8d6e5; font-size: 13px;
+  font-family: 'Space Mono', monospace; cursor: pointer;
+  min-width: 140px; transition: border-color 0.15s;
+}
+.gh-select:focus { outline: none; border-color: rgba(77,166,255,0.4); }
+
+.gh-search-btn {
+  padding: 10px 24px; border-radius: 9px; font-size: 13px; font-weight: 700;
+  font-family: 'Space Mono', monospace; cursor: pointer; letter-spacing: 0.5px;
+  background: linear-gradient(135deg, #1a6fc4, #0d4f8f);
+  border: 1px solid rgba(77,166,255,0.35); color: #e8f4ff;
+  transition: all 0.15s; white-space: nowrap; height: 42px;
+}
+.gh-search-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2280d8, #1560a8);
+  box-shadow: 0 0 16px rgba(77,166,255,0.25);
+}
+.gh-search-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Error ── */
+.gh-error {
+  display: flex; align-items: flex-start; gap: 10px; padding: 14px 18px;
+  background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2);
+  border-radius: 10px; color: #fca5a5; font-size: 13px;
+}
+
+/* ── Loading ── */
+.gh-loading {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 60px; color: #5a7a9a; font-size: 13px;
+}
+
+/* ── Results header ── */
+.gh-results-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+}
+.gh-results-title {
+  font-size: 15px; color: #c8d6e5; letter-spacing: 0.3px;
+}
+.gh-results-title strong { color: #4da6ff; }
+.gh-results-page { font-size: 11px; color: #4a6a8a; font-family: 'Space Mono', monospace; }
+
+/* ── Summary Bar ── */
+.gh-summary {
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+.gh-summary-chip {
+  display: flex; flex-direction: column; gap: 3px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px; padding: 10px 16px; min-width: 110px;
+}
+.gh-summary-chip--streak { border-color: rgba(255,214,68,0.2); background: rgba(255,214,68,0.05); }
+.gh-summary-label {
+  font-size: 9px; letter-spacing: 1.5px; color: #4a6a8a; text-transform: uppercase;
+}
+.gh-summary-value {
+  font-size: 18px; font-weight: 700; color: #c8d6e5;
+  font-family: 'Orbitron', sans-serif;
+}
+.gh-w { color: #4ade80; }
+.gh-l { color: #f87171; }
+.gh-pct { font-size: 13px; color: #7a9ab5; font-family: 'Space Mono', monospace; font-weight: 400; }
+
+.gh-streak--w { color: #4ade80; }
+.gh-streak--l { color: #f87171; }
+
+/* ── Table ── */
+.gh-table-wrap {
+  overflow-x: auto; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.2);
+}
+
+.gh-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+.gh-th {
+  padding: 11px 14px; text-align: left; font-size: 10px; font-weight: 700;
+  letter-spacing: 1.5px; color: #5a7a9a; text-transform: uppercase;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  background: rgba(0,0,0,0.3); white-space: nowrap;
+}
+
+.gh-td {
+  padding: 10px 14px; vertical-align: middle; white-space: nowrap;
+  color: #c8d6e5;
+}
+
+.gh-row {
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  transition: background 0.12s;
+}
+.gh-row:last-child { border-bottom: none; }
+.gh-row:hover { background: rgba(255,255,255,0.03); }
+.gh-row--w { border-left: 2px solid rgba(74,222,128,0.3); }
+.gh-row--l { border-left: 2px solid rgba(248,113,113,0.25); }
+.gh-row--u { border-left: 2px solid transparent; }
+
+.gh-td--date   { color: #7a9ab5; font-size: 12px; font-family: 'Space Mono', monospace; min-width: 130px; }
+.gh-td--mode   { text-align: center; }
+.gh-td--result { text-align: center; }
+.gh-td--score  { text-align: center; min-width: 80px; }
+.gh-td--pitcher { color: #7a9ab5; font-size: 12px; max-width: 260px; white-space: normal; }
+
+/* ── Mode badge ── */
+.gh-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 5px;
+  font-size: 10px; font-weight: 700; letter-spacing: 1px;
+  font-family: 'Orbitron', sans-serif;
+}
+.gh-badge--dd {
+  background: rgba(77,166,255,0.15); color: #60a5fa;
+  border: 1px solid rgba(77,166,255,0.25);
+}
+.gh-badge--ex {
+  background: rgba(255,255,255,0.06); color: #6b8aa0;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* ── Result badge ── */
+.gh-result {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 6px;
+  font-size: 14px; font-weight: 900; font-family: 'Orbitron', sans-serif;
+}
+.gh-result--w {
+  background: rgba(74,222,128,0.15); color: #4ade80;
+  border: 1px solid rgba(74,222,128,0.3);
+}
+.gh-result--l {
+  background: rgba(248,113,113,0.12); color: #f87171;
+  border: 1px solid rgba(248,113,113,0.25);
+}
+.gh-result--u {
+  background: rgba(255,255,255,0.04); color: #4a6a8a;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* ── Score ── */
+.gh-score {
+  font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700;
+}
+.gh-score-win  { color: #4ade80; }
+.gh-score-lose { color: #f87171; }
+.gh-score-sep  { color: #3a5a7a; font-weight: 400; }
+
+/* ── Pagination ── */
+.gh-pagination {
+  display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap;
+  margin-top: 4px;
+}
+.gh-page-btn {
+  padding: 7px 14px; border-radius: 8px; font-size: 12px;
+  font-family: 'Space Mono', monospace; cursor: pointer;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09);
+  color: #c8d6e5; transition: all 0.15s; min-width: 42px; text-align: center;
+}
+.gh-page-btn:hover:not(:disabled) { background: rgba(77,166,255,0.1); border-color: rgba(77,166,255,0.3); color: #60a5fa; }
+.gh-page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.gh-page-btn--active {
+  background: rgba(77,166,255,0.15); border-color: rgba(77,166,255,0.4);
+  color: #4da6ff; font-weight: 700; cursor: default;
+}
+.gh-page-ellipsis { color: #3a5a7a; padding: 0 4px; font-size: 13px; }
+
+/* ── Empty / Idle States ── */
+.gh-empty, .gh-idle {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px; padding: 80px 20px; text-align: center;
+}
+.gh-empty-icon, .gh-idle-icon { font-size: 48px; line-height: 1; }
+.gh-empty-title, .gh-idle-title {
+  font-family: 'Orbitron', sans-serif; font-size: 17px;
+  color: #4a6a8a; font-weight: 700; letter-spacing: 1px;
+}
+.gh-empty-sub, .gh-idle-sub {
+  font-size: 13px; color: #3a5a7a; max-width: 400px; line-height: 1.6;
+}
