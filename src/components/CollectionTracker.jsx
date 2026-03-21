@@ -37,8 +37,41 @@ const RARITY_ORDER = ['Diamond', 'Gold', 'Silver', 'Bronze', 'Common']
 
 const ALL_TEAMS = Object.values(DIVISIONS).flat()
 
-// Teams that belong to a division — everything else is FA/Legends
-const DIVISION_TEAM_SET = new Set(ALL_TEAMS)
+// ── Team name normalisation ─────────────────────────────────────────
+// items.json may return team as a full name ("Baltimore Orioles"), a city
+// ("Baltimore"), or already a short code ("BAL"). Listings use team_short_name.
+// Build a reverse lookup so all three forms collapse to the short code.
+
+const FULL_NAME_TO_CODE = Object.fromEntries(
+  Object.entries(TEAM_NAMES)
+    .filter(([k]) => k !== 'FA')
+    .map(([code, name]) => [name.toLowerCase(), code])
+)
+
+// Also map city-only variants  (e.g. "Baltimore" → "BAL")
+const CITY_TO_CODE = {
+  'baltimore': 'BAL', 'boston': 'BOS', 'yankees': 'NYY', 'new york yankees': 'NYY',
+  'tampa bay': 'TB', 'toronto': 'TOR', 'chicago white sox': 'CWS', 'cleveland': 'CLE',
+  'detroit': 'DET', 'kansas city': 'KC', 'minnesota': 'MIN', 'houston': 'HOU',
+  'los angeles angels': 'LAA', 'angels': 'LAA', 'oakland': 'OAK', 'seattle': 'SEA',
+  'texas': 'TEX', 'atlanta': 'ATL', 'miami': 'MIA', 'new york mets': 'NYM',
+  'philadelphia': 'PHI', 'washington': 'WAS', 'chicago cubs': 'CHC', 'cubs': 'CHC',
+  'cincinnati': 'CIN', 'milwaukee': 'MIL', 'pittsburgh': 'PIT',
+  'st. louis': 'STL', 'st louis': 'STL', 'arizona': 'ARI', 'colorado': 'COL',
+  'los angeles dodgers': 'LAD', 'dodgers': 'LAD', 'san diego': 'SD',
+  'san francisco': 'SF',
+}
+
+function getTeamCode(item) {
+  // Prefer explicit short-code field (listings embed this)
+  const raw = (item.team_short_name || item.team || '').trim()
+  if (!raw || /free agent/i.test(raw)) return 'FA'
+  // Already a short code — 2-3 uppercase letters, optionally with numbers
+  if (/^[A-Z]{2,3}$/.test(raw)) return raw
+  const lower = raw.toLowerCase()
+  // Try full-name lookup first, then city/nickname lookup
+  return FULL_NAME_TO_CODE[lower] ?? CITY_TO_CODE[lower] ?? 'FA'
+}
 
 // ── Helpers ────────────────────────────────────────────────────────
 
@@ -49,20 +82,32 @@ function parseOvr(v) {
 }
 
 function computeTeamStats(cards) {
-  const listed = cards.filter(c => c.onMarket)
+  const listed    = cards.filter(c => c.onMarket)
   const totalCost = listed.reduce((s, c) => s + (c.sellPrice || 0), 0)
-  const byCost = {}
+  const byCost    = {}
   RARITY_ORDER.forEach(r => { byCost[r] = 0 })
-  listed.forEach(c => { byCost[c.rarity] = (byCost[c.rarity] || 0) + (c.sellPrice || 0) })
+  listed.forEach(c => {
+    const r = c.item?.rarity || 'Common'
+    byCost[r] = (byCost[r] || 0) + (c.sellPrice || 0)
+  })
   const sorted = [...listed].sort((a, b) => (b.sellPrice || 0) - (a.sellPrice || 0))
+
+  // Normalise "most expensive" / "cheapest" shape for display
+  const toCard = c => c ? {
+    uuid:      c.item?.uuid,
+    name:      c.item?.listing_name || c.item?.name || '—',
+    rarity:    c.item?.rarity,
+    sellPrice: c.sellPrice,
+  } : null
+
   return {
     total: cards.length,
     listed: listed.length,
     notListed: cards.length - listed.length,
     totalCost,
     byCost,
-    mostExpensive: sorted[0] || null,
-    cheapest: sorted[sorted.length - 1] || null,
+    mostExpensive: toCard(sorted[0]),
+    cheapest:      toCard(sorted[sorted.length - 1]),
   }
 }
 
@@ -636,13 +681,27 @@ export default function CollectionTracker({ allListings }) {
     })
   }, [catalog, listingMap])
 
-  // ── Group by team ──
+  // ── Debug log — remove once team matching is confirmed ──
+  useMemo(() => {
+    if (!catalog?.length) return
+    const uniqueTeamValues = [...new Set(catalog.map(i => i.team_short_name || i.team))].sort()
+    console.log('COLLECTION DEBUG:', {
+      sampleItem:       catalog[0],
+      sampleListing:    allListings?.[0],
+      uniqueTeamValues,
+      catalogCount:     catalog.length,
+      listingsCount:    allListings?.length ?? 0,
+      listingMapSize:   listingMap.size,
+      onMarketCount:    enriched.filter(c => c.onMarket).length,
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog?.length, listingMap.size])
+
+  // ── Group by team using normalised short codes ──
   const teamMap = useMemo(() => {
     const m = {}
     enriched.forEach(c => {
-      const team = c.item.team || 'FA'
-      // Normalise common "Free Agent" variants
-      const key  = (team === 'Free Agents' || team === 'FA') ? 'FA' : team
+      const key = getTeamCode(c.item)
       ;(m[key] = m[key] || []).push(c)
     })
     return m

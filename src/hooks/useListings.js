@@ -114,7 +114,9 @@ export function useListings() {
         setIsFullData(total === 1)
       }
     } catch (e) {
-      if (e.name !== 'AbortError') setError(e.message)
+      if (e.name !== 'AbortError') {
+        setError(!navigator.onLine ? 'No internet connection' : e.message)
+      }
       setLoading(false)
       setScanning(false)
     }
@@ -193,7 +195,9 @@ export function useListings() {
         setScanProgress({ page: total, total })
       }
     } catch (e) {
-      if (e.name !== 'AbortError') setError(e.message)
+      if (e.name !== 'AbortError') {
+        setError(!navigator.onLine ? 'No internet connection' : e.message)
+      }
       setLoading(false)
       setScanning(false)
     }

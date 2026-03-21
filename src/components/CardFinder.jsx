@@ -286,14 +286,14 @@ export default function CardFinder({ allListings }) {
     [filters]
   )
 
-  // Whether to show the arsenal summary column
-  const showArsenalCol = arsenalCount > 0
-
   // Count active filters per section for badges
   const hitCount      = ['minContactR','minContactL','minPowerR','minPowerL','minVision','minDiscipline','minBattingClutch','minSpeed'].filter(k => filters[k] !== '').length
   const pitchCount    = ['minKper9','maxBBper9','maxHper9','maxHRper9','minVelocity','minControl','minMovement','minStamina','minPitchingClutch'].filter(k => filters[k] !== '').length
   const fldCount      = ['minFielding','minArmStrength','minReaction'].filter(k => filters[k] !== '').length
   const arsenalCount  = ['pitchType','minPitchCount','minSpeedRange'].filter(k => filters[k] !== '' && filters[k] != null).length
+
+  // Whether to show the arsenal summary column
+  const showArsenalCol = arsenalCount > 0
 
   const needsAttrFetch = hasAttrFilters(filters)
 

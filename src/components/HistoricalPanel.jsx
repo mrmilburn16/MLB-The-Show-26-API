@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { fmt, fmtProfit, profitClass } from '../utils/format'
 import { parsePrice } from '../utils/snipe'
 import { RARITY_COLORS } from '../constants'
@@ -394,6 +395,14 @@ export default function HistoricalPanel({
   onClose,
   onCompare, isInTray, isTrayFull,
 }) {
+  // Close on Escape key
+  useEffect(() => {
+    if (!listing) return
+    function handleKey(e) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [listing, onClose])
+
   if (!listing) return null
 
   const item    = listing.item || {}
@@ -451,7 +460,11 @@ export default function HistoricalPanel({
   const priceHistory    = velocityData?.priceHistory    || []
 
   return (
-    <div className="detail-panel">
+    <>
+      {/* Backdrop — click anywhere outside the drawer to close */}
+      <div className="detail-overlay" onClick={onClose} aria-hidden="true" />
+
+      <div className="detail-panel" role="dialog" aria-modal="true">
 
       {/* ── Header ── */}
       <div className="detail-header">
@@ -626,5 +639,6 @@ export default function HistoricalPanel({
         {isSnipeHot && ` 🎯 Strong snipe detected — ask is ${snipeDiscount.toFixed(1)}% below median.`}
       </p>
     </div>
+    </>
   )
 }

@@ -13,7 +13,7 @@ import LoadingSpinner    from './components/LoadingSpinner'
 import BargainScanner    from './components/BargainScanner'
 import FullMarketScan    from './components/FullMarketScan'
 import NearQSPanel       from './components/NearQSPanel'
-import SnipeAlertBanner  from './components/SnipeAlertBanner'
+import SnipeAlertsTab    from './components/SnipeAlertsTab'
 import GameHistory        from './components/GameHistory'
 import CardFinder            from './components/CardFinder'
 import CollectionTracker    from './components/CollectionTracker'
@@ -81,6 +81,7 @@ export default function App() {
   const autoMarket = useAutoMarket()   // always runs in background (mlb_card, no filters)
   const {
     isRefreshing, lastUpdated, isPaused, togglePause,
+    isFromCache, fetchError: marketFetchError,
   } = autoMarket
   const {
     listings: otherListings, totalPages, loading: otherLoading,
@@ -119,19 +120,22 @@ export default function App() {
 
   // ── Snipe alerts ──
   const {
-    alerts:        snipeAlerts,
-    history:       snipeHistory,
-    historyOpen:   snipeHistoryOpen,
-    setHistoryOpen: setSnipeHistoryOpen,
-    threshold:     snipeThreshold,
-    setThreshold:  setSnipeThreshold,
-    soundEnabled:  snipeSoundEnabled,
+    alerts:          snipeAlerts,
+    filteredAlerts:  snipeFilteredAlerts,
+    history:         snipeHistory,
+    historyOpen:     snipeHistoryOpen,
+    setHistoryOpen:  setSnipeHistoryOpen,
+    threshold:       snipeThreshold,
+    setThreshold:    setSnipeThreshold,
+    filters:         snipeFilters,
+    setFilters:      setSnipeFilters,
+    soundEnabled:    snipeSoundEnabled,
     setSoundEnabled: setSnipeSoundEnabled,
     runSnipeCheck,
     updateAvailability,
-    dismissAlert:  dismissSnipeAlert,
-    dismissAll:    dismissAllSnipes,
-    clearHistory:  clearSnipeHistory,
+    dismissAlert:    dismissSnipeAlert,
+    dismissAll:      dismissAllSnipes,
+    clearHistory:    clearSnipeHistory,
   } = useSnipeAlerts()
 
   // ── Proactively queue velocity for top 50 once full data loads ──
@@ -482,9 +486,9 @@ export default function App() {
         newEntryCount={isMlbCard ? newEntryCount : 0}
       />
 
-      <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+      <TabBar activeTab={activeTab} onTabChange={setActiveTab} alertCount={snipeAlerts.length} />
 
-      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && activeTab !== 'collections' && activeTab !== 'rosterupdates' && (
+      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && activeTab !== 'collections' && activeTab !== 'rosterupdates' && activeTab !== 'snipealerts' && (
         <PresetBar
           presets={presets}
           activeId={activePresetId}
@@ -498,7 +502,7 @@ export default function App() {
         />
       )}
 
-      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && activeTab !== 'collections' && activeTab !== 'rosterupdates' && (
+      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && activeTab !== 'collections' && activeTab !== 'rosterupdates' && activeTab !== 'snipealerts' && (
         <FiltersBar
           filters={filters}
           onFilterChange={handleFilterChange}
@@ -516,20 +520,23 @@ export default function App() {
 
       {activeTab === 'market' && <VelocityBanner pendingCount={pendingCount} />}
 
-      {activeTab === 'market' && (
-        <SnipeAlertBanner
-          alerts={snipeAlerts}
-          history={snipeHistory}
-          historyOpen={snipeHistoryOpen}
-          setHistoryOpen={setSnipeHistoryOpen}
-          threshold={snipeThreshold}
-          setThreshold={setSnipeThreshold}
-          soundEnabled={snipeSoundEnabled}
-          setSoundEnabled={setSnipeSoundEnabled}
-          dismissAlert={dismissSnipeAlert}
-          dismissAll={dismissAllSnipes}
-          clearHistory={clearSnipeHistory}
-        />
+      {activeTab === 'snipealerts' && (
+        <main className="main">
+          <SnipeAlertsTab
+            alerts={snipeAlerts}
+            filteredAlerts={snipeFilteredAlerts}
+            history={snipeHistory}
+            historyOpen={snipeHistoryOpen}
+            setHistoryOpen={setSnipeHistoryOpen}
+            filters={snipeFilters}
+            setFilters={setSnipeFilters}
+            soundEnabled={snipeSoundEnabled}
+            setSoundEnabled={setSnipeSoundEnabled}
+            dismissAlert={dismissSnipeAlert}
+            dismissAll={dismissAllSnipes}
+            clearHistory={clearSnipeHistory}
+          />
+        </main>
       )}
 
       {activeTab === 'scanner' && (
@@ -569,7 +576,15 @@ export default function App() {
 
       {activeTab === 'market' && (
         <main className="main">
-          <ErrorBox message={error} />
+          <ErrorBox message={error || (isMlbCard ? marketFetchError : null)} />
+
+          {/* Cache freshness note — only shown while the background refresh is in flight */}
+          {isMlbCard && isFromCache && isRefreshing && (
+            <div className="cache-refresh-note">
+              <span className="auto-scan-dots"><span/><span/><span/></span>
+              Showing cached prices · refreshing in background…
+            </div>
+          )}
 
           {/* ── Scan progress banner ── */}
           {scanning && (

@@ -176,13 +176,13 @@ export default function ComparisonModal({
 
   // Pitch arsenal union — collect all unique pitch names
   const allPitchNames = [...new Set(
-    cards.flatMap(c => (c.item.pitches || []).map(p => p.name)).filter(Boolean)
+    cards.flatMap(c => (Array.isArray(c.item?.pitches) ? c.item.pitches : []).map(p => p.name)).filter(Boolean)
   )]
 
   // Quirks — collect all quirk names with counts
   const quirkCounts = {}
   cards.forEach(c => {
-    ;(c.item.quirks || []).forEach(q => {
+    ;(Array.isArray(c.item?.quirks) ? c.item.quirks : []).forEach(q => {
       quirkCounts[q.name] = (quirkCounts[q.name] || 0) + 1
     })
   })
@@ -353,7 +353,7 @@ export default function ComparisonModal({
                     {allPitchNames.map(pitchName => {
                       const { color: typeColor } = pitchTypeInfo(pitchName)
                       const pitches    = cards.map(c =>
-                        (c.item.pitches || []).find(p => p.name === pitchName) ?? null
+                        (Array.isArray(c.item?.pitches) ? c.item.pitches : []).find(p => p.name === pitchName) ?? null
                       )
                       const speedVals  = pitches.map(p => p?.speed   ?? null)
                       const ctrlVals   = pitches.map(p => p?.control  ?? null)
@@ -405,8 +405,8 @@ export default function ComparisonModal({
                         ⚡ Speed Range
                       </td>
                       {cards.map(({ uuid, item }) => {
-                        const s = pitchArsenalStats(item.pitches)
-                        const vals = cards.map(c => pitchArsenalStats(c.item.pitches)?.speedRange ?? null)
+                        const s = pitchArsenalStats(Array.isArray(item?.pitches) ? item.pitches : [])
+                        const vals = cards.map(c => pitchArsenalStats(Array.isArray(c.item?.pitches) ? c.item.pitches : [])?.speedRange ?? null)
                         const bi   = bestIdx(vals)
                         const i    = cards.findIndex(c => c.uuid === uuid)
                         const range = s?.speedRange ?? null
@@ -428,17 +428,19 @@ export default function ComparisonModal({
                 )}
 
                 {/* ── Quirks ── */}
-                {cards.some(c => c.item.quirks?.length > 0) && (
+                {cards.some(c => Array.isArray(c.item?.quirks) && c.item.quirks.length > 0) && (
                   <>
                     <SectionRow label="✨ Quirks" colCount={colCount} />
                     <tr className="cmp-attr-row cmp-quirks-row">
                       <td className="cmp-td cmp-td--label">Quirks</td>
-                      {cards.map(({ uuid, item }) => (
+                      {cards.map(({ uuid, item }) => {
+                        const quirks = Array.isArray(item?.quirks) ? item.quirks : []
+                        return (
                         <td key={uuid} className="cmp-td">
                           <div className="cmp-quirks-list">
-                            {(item.quirks || []).length === 0
+                            {quirks.length === 0
                               ? <span className="cmp-no-pitch">None</span>
-                              : (item.quirks || []).map((q, qi) => {
+                              : quirks.map((q, qi) => {
                                   const isShared = quirkCounts[q.name] > 1
                                   return (
                                     <div key={qi}
@@ -456,7 +458,8 @@ export default function ComparisonModal({
                             }
                           </div>
                         </td>
-                      ))}
+                        )
+                      })}
                     </tr>
                   </>
                 )}
