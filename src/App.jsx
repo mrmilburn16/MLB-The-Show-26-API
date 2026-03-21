@@ -15,7 +15,8 @@ import FullMarketScan    from './components/FullMarketScan'
 import NearQSPanel       from './components/NearQSPanel'
 import SnipeAlertBanner  from './components/SnipeAlertBanner'
 import GameHistory        from './components/GameHistory'
-import CardFinder        from './components/CardFinder'
+import CardFinder            from './components/CardFinder'
+import CollectionTracker    from './components/CollectionTracker'
 import ComparisonTray    from './components/ComparisonTray'
 import ComparisonModal   from './components/ComparisonModal'
 import { useListings }    from './hooks/useListings'
@@ -482,7 +483,7 @@ export default function App() {
 
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && (
+      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && activeTab !== 'collections' && (
         <PresetBar
           presets={presets}
           activeId={activePresetId}
@@ -496,7 +497,7 @@ export default function App() {
         />
       )}
 
-      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && (
+      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && activeTab !== 'collections' && (
         <FiltersBar
           filters={filters}
           onFilterChange={handleFilterChange}
@@ -545,6 +546,12 @@ export default function App() {
       {activeTab === 'cardfinder' && (
         <main className="main">
           <CardFinder allListings={autoMarket.allListings} />
+        </main>
+      )}
+
+      {activeTab === 'collections' && (
+        <main className="main">
+          <CollectionTracker allListings={autoMarket.allListings} />
         </main>
       )}
 

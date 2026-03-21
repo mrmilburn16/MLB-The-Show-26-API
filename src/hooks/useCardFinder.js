@@ -1,13 +1,10 @@
 import { useState, useCallback, useRef } from 'react'
-import { API_BASE } from '../constants'
 import { pitchArsenalStats, hasPitchType } from '../utils/pitches'
+import { loadCatalog, getCachedCatalog, CATALOG_TTL } from '../store/catalog'
 
 // ── Module-level caches (survive component remounts) ──────────────
-// Keyed by "type" so we could extend to other card types in future.
-const catalogStore   = { items: null, loadedAt: 0 }   // full items.json catalog
-const attrStore      = new Map()                       // uuid → full item.json payload
-const CATALOG_TTL    = 10 * 60 * 1000   // 10 min — catalog changes on roster updates
-const ATTR_TTL       = 60 * 60 * 1000   // 1 hr  — attributes are stable
+const attrStore  = new Map()   // uuid → full item.json payload
+const ATTR_TTL   = 60 * 60 * 1000   // 1 hr  — attributes are stable
 
 const CONCURRENT     = 3
 const BATCH_DELAY    = 120   // ms between batches
@@ -15,34 +12,6 @@ const MAX_CANDIDATES = 300   // safety cap before fetching attributes
 
 // ── Helpers ────────────────────────────────────────────────────────
 async function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
-
-/** Fetch every page of items.json and return the full array */
-async function loadCatalog(onProgress, shouldCancel) {
-  const firstRes  = await fetch(`${API_BASE}/items.json?type=mlb_card&page=1`)
-  if (!firstRes.ok) throw new Error(`items.json HTTP ${firstRes.status}`)
-  const firstData = await firstRes.json()
-  const total     = firstData.total_pages || 1
-  const all       = [...(firstData.items || [])]
-  onProgress({ page: 1, total })
-
-  for (let i = 2; i <= total && !shouldCancel(); i += CONCURRENT) {
-    const batch = []
-    for (let j = i; j < i + CONCURRENT && j <= total; j++) {
-      batch.push(
-        fetch(`${API_BASE}/items.json?type=mlb_card&page=${j}`)
-          .then(r => r.ok ? r.json() : { items: [] })
-          .then(d => d.items || [])
-          .catch(() => [])
-      )
-    }
-    const results = await Promise.all(batch)
-    if (shouldCancel()) return null
-    results.forEach(arr => all.push(...arr))
-    onProgress({ page: Math.min(i + CONCURRENT - 1, total), total })
-    if (i + CONCURRENT <= total) await sleep(BATCH_DELAY)
-  }
-  return all
-}
 
 /** Fetch item.json for a single uuid, with cache awareness */
 async function fetchAttr(uuid) {
@@ -147,7 +116,7 @@ export function hasAttrFilters(filters) {
  */
 export function useCardFinder() {
   const [isSearching,        setIsSearching]        = useState(false)
-  const [catalogStatus,      setCatalogStatus]      = useState({ loading: false, loaded: !!catalogStore.items, progress: { page: 0, total: 0 } })
+  const [catalogStatus,      setCatalogStatus]      = useState({ loading: false, loaded: !!getCachedCatalog(), progress: { page: 0, total: 0 } })
   const [fetchProgress,      setFetchProgress]      = useState({ done: 0, total: 0 })
   const [results,            setResults]            = useState([])
   const [tooManyCandidates,  setTooManyCandidates]  = useState(false)
@@ -169,23 +138,23 @@ export function useCardFinder() {
     setFetchProgress({ done: 0, total: 0 })
 
     try {
-      // ── Step 1: Ensure catalog is loaded ──────────────────────
-      let catalog = catalogStore.items
-      const catalogStale = Date.now() - catalogStore.loadedAt > CATALOG_TTL
-
-      if (!catalog || catalogStale) {
+      // ── Step 1: Ensure catalog is loaded (shared store) ───────
+      const alreadyCached = !!getCachedCatalog()
+      if (!alreadyCached) {
         setCatalogStatus({ loading: true, loaded: false, progress: { page: 0, total: 0 } })
-        catalog = await loadCatalog(
-          prog => setCatalogStatus({ loading: true, loaded: false, progress: prog }),
-          () => cancelRef.current
-        )
-        if (cancelRef.current || !catalog) { setIsSearching(false); return }
-        catalogStore.items    = catalog
-        catalogStore.loadedAt = Date.now()
-        setCatalogStatus({ loading: false, loaded: true, progress: { page: catalog.length, total: catalog.length } })
-      } else {
-        setCatalogStatus(prev => ({ ...prev, loaded: true, loading: false }))
       }
+
+      let catalog
+      try {
+        catalog = await loadCatalog(
+          prog => setCatalogStatus({ loading: true, loaded: false, progress: prog })
+        )
+      } catch (e) {
+        throw new Error(`Failed to load card catalog: ${e.message}`)
+      }
+
+      if (cancelRef.current || !catalog) { setIsSearching(false); return }
+      setCatalogStatus({ loading: false, loaded: true, progress: { page: catalog.length, total: catalog.length } })
 
       // ── Step 2: Basic filters ──────────────────────────────────
       const candidates = catalog.filter(item => {
