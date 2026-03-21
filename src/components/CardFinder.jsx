@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { useCardFinder, hasAttrFilters } from '../hooks/useCardFinder'
 import { RARITIES, POSITIONS } from '../constants'
 import { fmt, rarityColors } from '../utils/format'
+import { PITCH_TYPE_OPTIONS, pitchTypeInfo, pitchArsenalStats } from '../utils/pitches'
 
 // ── Default filter state ─────────────────────────────────────────
 const DEFAULT_FILTERS = {
@@ -19,6 +20,8 @@ const DEFAULT_FILTERS = {
   minStamina: '', minPitchingClutch: '',
   // Fielding
   minFielding: '', minArmStrength: '', minReaction: '',
+  // Arsenal (pitcher-specific)
+  pitchType: '', minPitchCount: '', minSpeedRange: '',
 }
 
 // ── Quick presets ────────────────────────────────────────────────
@@ -42,6 +45,18 @@ const PRESETS = [
   {
     label: '💛 Gold Gems',
     filters: { ...DEFAULT_FILTERS, rarity: 'Gold', minContactR: '90' },
+  },
+  {
+    label: '🎯 Cutter Specialists',
+    filters: { ...DEFAULT_FILTERS, pitchType: 'cutter', minPitchCount: '4' },
+  },
+  {
+    label: '🌀 Deep Arsenals',
+    filters: { ...DEFAULT_FILTERS, minPitchCount: '5', minSpeedRange: '15' },
+  },
+  {
+    label: '💥 Big Tunnelers',
+    filters: { ...DEFAULT_FILTERS, minSpeedRange: '20' },
   },
 ]
 
@@ -124,11 +139,15 @@ function ProgressBar({ done, total }) {
   )
 }
 
-function ResultRow({ row, activeCols, rank }) {
+function ResultRow({ row, activeCols, showArsenalCol, rank }) {
   const { item, attrs, listing } = row
   const r       = rarityColors(item.rarity)
   const imgSrc  = item.baked_img || item.img || ''
   const ovr     = typeof item.ovr === 'number' ? item.ovr : parseInt(item.ovr, 10)
+
+  // Arsenal summary for this card
+  const pitches  = attrs?.pitches || []
+  const arsenal  = pitches.length ? pitchArsenalStats(pitches) : null
 
   return (
     <tr className="cf-row">
@@ -159,7 +178,7 @@ function ResultRow({ row, activeCols, rank }) {
       <td className="cf-td" style={{ color: '#aab' }}>{item.display_position || '—'}</td>
 
       {/* Active attribute columns */}
-      {activeCols.map(({ filterKey, attrKey, label }) => {
+      {activeCols.map(({ filterKey, attrKey }) => {
         const v = attrs?.[attrKey] ?? null
         return (
           <td key={filterKey} className="cf-td cf-attr-td">
@@ -175,6 +194,35 @@ function ResultRow({ row, activeCols, rank }) {
           </td>
         )
       })}
+
+      {/* Arsenal column */}
+      {showArsenalCol && (
+        <td className="cf-td cf-arsenal-td">
+          {arsenal ? (
+            <div className="cf-arsenal-cell">
+              <div className="cf-arsenal-line">
+                <span className="cf-arsenal-count">{arsenal.count}P</span>
+                {arsenal.speedRange > 0 && (
+                  <span className="cf-arsenal-range"
+                        style={{ color: arsenal.speedRange >= 15 ? '#4ade80' : '#fbbf24' }}>
+                    ⚡{arsenal.speedRange}mph
+                  </span>
+                )}
+              </div>
+              {/* Pitch type dots */}
+              <div className="cf-arsenal-dots">
+                {pitches.slice(0, 6).map((p, pi) => {
+                  const { color } = pitchTypeInfo(p.name)
+                  return (
+                    <span key={pi} className="cf-pitch-dot" title={`${p.name} ${p.speed ?? ''}mph`}
+                          style={{ background: color }} />
+                  )
+                })}
+              </div>
+            </div>
+          ) : <span className="muted">—</span>}
+        </td>
+      )}
 
       {/* Market prices */}
       <td className="cf-td mono buy-color" style={{ fontWeight: 600 }}>
@@ -238,10 +286,14 @@ export default function CardFinder({ allListings }) {
     [filters]
   )
 
+  // Whether to show the arsenal summary column
+  const showArsenalCol = arsenalCount > 0
+
   // Count active filters per section for badges
-  const hitCount  = ['minContactR','minContactL','minPowerR','minPowerL','minVision','minDiscipline','minBattingClutch','minSpeed'].filter(k => filters[k] !== '').length
-  const pitchCount= ['minKper9','maxBBper9','maxHper9','maxHRper9','minVelocity','minControl','minMovement','minStamina','minPitchingClutch'].filter(k => filters[k] !== '').length
-  const fldCount  = ['minFielding','minArmStrength','minReaction'].filter(k => filters[k] !== '').length
+  const hitCount      = ['minContactR','minContactL','minPowerR','minPowerL','minVision','minDiscipline','minBattingClutch','minSpeed'].filter(k => filters[k] !== '').length
+  const pitchCount    = ['minKper9','maxBBper9','maxHper9','maxHRper9','minVelocity','minControl','minMovement','minStamina','minPitchingClutch'].filter(k => filters[k] !== '').length
+  const fldCount      = ['minFielding','minArmStrength','minReaction'].filter(k => filters[k] !== '').length
+  const arsenalCount  = ['pitchType','minPitchCount','minSpeedRange'].filter(k => filters[k] !== '' && filters[k] != null).length
 
   const needsAttrFetch = hasAttrFilters(filters)
 
@@ -359,6 +411,36 @@ export default function CardFinder({ allListings }) {
             </div>
           </FilterSection>
 
+          {/* Arsenal */}
+          <FilterSection title="🎯 Pitch Arsenal" badge={arsenalCount}>
+            <div className="cf-field" style={{ marginBottom: 8 }}>
+              <label className="cf-field-label">Must have pitch type</label>
+              <select className="cf-select" value={filters.pitchType}
+                      onChange={e => setF('pitchType', e.target.value)}>
+                {PITCH_TYPE_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="cf-field-row">
+              <div className="cf-attr-field">
+                <label className="cf-field-label">≥ Pitch count</label>
+                <input type="number" className="cf-num-input" placeholder="e.g. 5"
+                       value={filters.minPitchCount} min={1} max={10}
+                       onChange={e => setF('minPitchCount', e.target.value)} />
+              </div>
+              <div className="cf-attr-field">
+                <label className="cf-field-label">≥ Speed range (MPH)</label>
+                <input type="number" className="cf-num-input" placeholder="e.g. 20"
+                       value={filters.minSpeedRange} min={0} max={40}
+                       onChange={e => setF('minSpeedRange', e.target.value)} />
+              </div>
+            </div>
+            <p className="cf-attr-note" style={{ marginTop: 6 }}>
+              Speed range = fastest − slowest pitch. Larger = better tunneling.
+            </p>
+          </FilterSection>
+
           {/* Search / Cancel */}
           <div className="cf-search-bar">
             {isSearching ? (
@@ -432,6 +514,7 @@ export default function CardFinder({ allListings }) {
                       {activeCols.map(c => (
                         <th key={c.filterKey} className="cf-th cf-attr-th">{c.label}</th>
                       ))}
+                      {showArsenalCol && <th className="cf-th cf-attr-th">ARSENAL</th>}
                       <th className="cf-th">BUY</th>
                       <th className="cf-th">SELL</th>
                     </tr>
@@ -442,6 +525,7 @@ export default function CardFinder({ allListings }) {
                         key={row.item.uuid || i}
                         row={row}
                         activeCols={activeCols}
+                        showArsenalCol={showArsenalCol}
                         rank={i + 1}
                       />
                     ))}

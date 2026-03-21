@@ -2774,3 +2774,194 @@ tr:hover .card-name-text:hover {
 .cf-wrap .gh-empty {
   margin-top: 40px;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   PITCH ARSENAL — Detail Panel (HistoricalPanel)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Summary stats strip ── */
+.arsenal-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 8px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.arsenal-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.arsenal-stat-label {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: #3a5a7a;
+  text-transform: uppercase;
+  font-family: 'Space Mono', monospace;
+}
+
+.arsenal-stat-val {
+  font-size: 15px;
+  font-weight: 700;
+  font-family: 'Space Mono', monospace;
+  color: #c8dff0;
+}
+
+.arsenal-stat--range .arsenal-stat-val {
+  font-size: 14px;
+}
+
+/* ── Speed bar chart ── */
+.arsenal-speed-chart {
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.15);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+.arsenal-chart-title {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #4a6a8a;
+  text-transform: uppercase;
+  font-family: 'Orbitron', sans-serif;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.arsenal-chart-scale {
+  color: #2a4a6a;
+  font-size: 9px;
+}
+
+.arsenal-range-badge {
+  background: rgba(74,222,128,0.08);
+  border: 1px solid rgba(74,222,128,0.2);
+  color: #4ade80;
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-family: 'Space Mono', monospace;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.arsenal-speed-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.arsenal-speed-name {
+  width: 150px;
+  font-size: 11px;
+  color: #8abadd;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.arsenal-speed-bar-outer {
+  flex: 1;
+  height: 8px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.arsenal-speed-bar-inner {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.arsenal-speed-num {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Space Mono', monospace;
+  min-width: 28px;
+  text-align: right;
+}
+
+/* ── Per-pitch detail row enhancements ── */
+.pitch-row {
+  border-left: 3px solid rgba(77,166,255,0.3); /* overridden inline per pitch type */
+  padding-left: 10px;
+  margin-bottom: 10px;
+}
+
+.pitch-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.pitch-type-badge {
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  font-family: 'Space Mono', monospace;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PITCH ARSENAL — Card Finder results table
+   ═══════════════════════════════════════════════════════════════ */
+
+.cf-arsenal-td {
+  min-width: 90px;
+}
+
+.cf-arsenal-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cf-arsenal-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cf-arsenal-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6ab0e8;
+  font-family: 'Space Mono', monospace;
+}
+
+.cf-arsenal-range {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Space Mono', monospace;
+}
+
+.cf-arsenal-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.cf-pitch-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  opacity: 0.85;
+}

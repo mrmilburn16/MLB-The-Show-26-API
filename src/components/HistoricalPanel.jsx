@@ -1,6 +1,7 @@
 import { fmt, fmtProfit, profitClass } from '../utils/format'
 import { parsePrice } from '../utils/snipe'
 import { RARITY_COLORS } from '../constants'
+import { pitchTypeInfo, pitchArsenalStats, speedBarPct } from '../utils/pitches'
 import PriceChart from './PriceChart'
 
 // ── Formatting helpers ───────────────────────────────────────────
@@ -189,49 +190,144 @@ function PitchArsenal({ itemData, loading }) {
   const pitches = itemData?.pitches
   if (!pitches?.length) return null
 
+  const stats          = pitchArsenalStats(pitches)
+  const sortedBySpeed  = [...pitches].sort((a, b) => (b.speed ?? 0) - (a.speed ?? 0))
+
   return (
     <div className="hist-section">
       <SectionTitle count={pitches.length}>Pitch Arsenal</SectionTitle>
+
+      {/* ── Summary stats strip ── */}
+      <div className="arsenal-summary">
+        <div className="arsenal-stat">
+          <span className="arsenal-stat-label">PITCHES</span>
+          <span className="arsenal-stat-val">{stats.count}</span>
+        </div>
+        {stats.fastest != null && (
+          <div className="arsenal-stat">
+            <span className="arsenal-stat-label">FASTEST</span>
+            <span className="arsenal-stat-val" style={{ color: '#ef4444' }}>{stats.fastest} mph</span>
+          </div>
+        )}
+        {stats.slowest != null && stats.slowest !== stats.fastest && (
+          <div className="arsenal-stat">
+            <span className="arsenal-stat-label">SLOWEST</span>
+            <span className="arsenal-stat-val" style={{ color: '#34d399' }}>{stats.slowest} mph</span>
+          </div>
+        )}
+        {stats.avgControl != null && (
+          <div className="arsenal-stat">
+            <span className="arsenal-stat-label">AVG CTRL</span>
+            <span className="arsenal-stat-val" style={{ color: attrColor(stats.avgControl) }}>{stats.avgControl}</span>
+          </div>
+        )}
+        {stats.avgMovement != null && (
+          <div className="arsenal-stat">
+            <span className="arsenal-stat-label">AVG MOV</span>
+            <span className="arsenal-stat-val" style={{ color: attrColor(stats.avgMovement) }}>{stats.avgMovement}</span>
+          </div>
+        )}
+        {stats.speedRange > 0 && (
+          <div className="arsenal-stat arsenal-stat--range">
+            <span className="arsenal-stat-label">SPEED RANGE</span>
+            <span className="arsenal-stat-val" style={{ color: stats.speedRange >= 15 ? '#4ade80' : '#fbbf24' }}>
+              ⚡ {stats.speedRange} MPH
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Speed bar chart ── */}
+      <div className="arsenal-speed-chart">
+        <div className="arsenal-chart-title">
+          Speed Chart&ensp;
+          <span className="arsenal-chart-scale">({SPEED_MIN}–{SPEED_MAX} MPH)</span>
+          {stats.speedRange > 0 && (
+            <span className="arsenal-range-badge"
+                  title="Speed differential between fastest and slowest pitch — larger = harder to time">
+              {stats.speedRange} MPH tunnel gap
+            </span>
+          )}
+        </div>
+        {sortedBySpeed.map((p, i) => {
+          const { color } = pitchTypeInfo(p.name)
+          const pct       = speedBarPct(p.speed)
+          return (
+            <div key={i} className="arsenal-speed-row">
+              <span className="arsenal-speed-name">{p.name}</span>
+              <div className="arsenal-speed-bar-outer">
+                <div className="arsenal-speed-bar-inner" style={{ width: `${pct}%`, background: color }} />
+              </div>
+              <span className="arsenal-speed-num" style={{ color }}>
+                {p.speed != null ? `${p.speed}` : '—'}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ── Per-pitch detail rows ── */}
       <div className="pitches-list">
-        {pitches.map((p, i) => (
-          <div key={i} className="pitch-row">
-            <span className="pitch-name">{p.name}</span>
-            <div className="pitch-attrs">
-              <div className="pitch-attr">
-                <span className="pitch-attr-label">SPD</span>
-                <span className="pitch-attr-val">{p.speed ?? '—'}</span>
-              </div>
-              <div className="pitch-attr">
-                <span className="pitch-attr-label">CTRL</span>
-                <span className="pitch-attr-val" style={{ color: attrColor(p.control) }}>
-                  {p.control ?? '—'}
+        {pitches.map((p, i) => {
+          const { color, category } = pitchTypeInfo(p.name)
+          return (
+            <div key={i} className="pitch-row" style={{ borderLeftColor: color }}>
+              <div className="pitch-row-head">
+                <span className="pitch-name">{p.name}</span>
+                <span className="pitch-type-badge"
+                      style={{ background: `${color}1a`, color, border: `1px solid ${color}40` }}>
+                  {category}
                 </span>
-                {p.control != null && (
-                  <div className="pitch-mini-bar-outer">
-                    <div className="pitch-mini-bar-inner"
-                         style={{ width: `${p.control}%`, background: attrColor(p.control) }} />
-                  </div>
-                )}
               </div>
-              <div className="pitch-attr">
-                <span className="pitch-attr-label">MOV</span>
-                <span className="pitch-attr-val" style={{ color: attrColor(p.movement) }}>
-                  {p.movement ?? '—'}
-                </span>
-                {p.movement != null && (
-                  <div className="pitch-mini-bar-outer">
-                    <div className="pitch-mini-bar-inner"
-                         style={{ width: `${p.movement}%`, background: attrColor(p.movement) }} />
-                  </div>
-                )}
+              <div className="pitch-attrs">
+                <div className="pitch-attr">
+                  <span className="pitch-attr-label">SPD</span>
+                  <span className="pitch-attr-val" style={{ color }}>
+                    {p.speed != null ? `${p.speed}` : '—'}
+                  </span>
+                  {p.speed != null && (
+                    <div className="pitch-mini-bar-outer">
+                      <div className="pitch-mini-bar-inner"
+                           style={{ width: `${speedBarPct(p.speed)}%`, background: color }} />
+                    </div>
+                  )}
+                </div>
+                <div className="pitch-attr">
+                  <span className="pitch-attr-label">CTRL</span>
+                  <span className="pitch-attr-val" style={{ color: attrColor(p.control) }}>
+                    {p.control ?? '—'}
+                  </span>
+                  {p.control != null && (
+                    <div className="pitch-mini-bar-outer">
+                      <div className="pitch-mini-bar-inner"
+                           style={{ width: `${p.control}%`, background: attrColor(p.control) }} />
+                    </div>
+                  )}
+                </div>
+                <div className="pitch-attr">
+                  <span className="pitch-attr-label">MOV</span>
+                  <span className="pitch-attr-val" style={{ color: attrColor(p.movement) }}>
+                    {p.movement ?? '—'}
+                  </span>
+                  {p.movement != null && (
+                    <div className="pitch-mini-bar-outer">
+                      <div className="pitch-mini-bar-inner"
+                           style={{ width: `${p.movement}%`, background: attrColor(p.movement) }} />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
 }
+
+// Speed range constants re-exported for the chart scale label
+const SPEED_MIN = 70
+const SPEED_MAX = 102
 
 function QuirksSection({ itemData, loading }) {
   if (loading) return null

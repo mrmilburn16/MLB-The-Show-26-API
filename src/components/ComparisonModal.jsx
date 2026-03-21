@@ -1,6 +1,7 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect } from 'react'
 import { RARITY_COLORS } from '../constants'
 import { fmt, fmtProfit, profitClass } from '../utils/format'
+import { pitchTypeInfo, pitchArsenalStats } from '../utils/pitches'
 
 // ── Helpers ─────────────────────────────────────────────────────
 const BAR_MAX = 125  // scale for attribute bars (99 fills ~79%)
@@ -350,24 +351,29 @@ export default function ComparisonModal({
                   <>
                     <SectionRow label="🎯 Pitch Arsenal" colCount={colCount} />
                     {allPitchNames.map(pitchName => {
-                      const pitches = cards.map(c =>
+                      const { color: typeColor } = pitchTypeInfo(pitchName)
+                      const pitches    = cards.map(c =>
                         (c.item.pitches || []).find(p => p.name === pitchName) ?? null
                       )
-                      const speedVals = pitches.map(p => p?.speed ?? null)
-                      const ctrlVals  = pitches.map(p => p?.control ?? null)
-                      const movVals   = pitches.map(p => p?.movement ?? null)
-                      const bestSpeed = bestIdx(speedVals)
-                      const bestCtrl  = bestIdx(ctrlVals)
-                      const bestMov   = bestIdx(movVals)
+                      const speedVals  = pitches.map(p => p?.speed   ?? null)
+                      const ctrlVals   = pitches.map(p => p?.control  ?? null)
+                      const movVals    = pitches.map(p => p?.movement ?? null)
+                      const bestSpeed  = bestIdx(speedVals)
+                      const bestCtrl   = bestIdx(ctrlVals)
+                      const bestMov    = bestIdx(movVals)
 
                       return (
                         <tr key={pitchName} className="cmp-attr-row">
-                          <td className="cmp-td cmp-td--label cmp-pitch-label">{pitchName}</td>
+                          <td className="cmp-td cmp-td--label cmp-pitch-label"
+                              style={{ borderLeft: `3px solid ${typeColor}` }}>
+                            {pitchName}
+                          </td>
                           {pitches.map((p, i) => (
                             <td key={i} className="cmp-td">
                               {p ? (
                                 <div className="cmp-pitch-cell">
-                                  <span className={`cmp-pitch-stat ${i === bestSpeed ? 'cmp-best-text' : ''}`}>
+                                  <span className={`cmp-pitch-stat ${i === bestSpeed ? 'cmp-best-text' : ''}`}
+                                        style={{ color: i === bestSpeed ? '#4ade80' : typeColor }}>
                                     <span className="cmp-pitch-key">SPD</span> {p.speed ?? '—'}
                                   </span>
                                   <div className="cmp-pitch-bars">
@@ -391,6 +397,33 @@ export default function ComparisonModal({
                         </tr>
                       )
                     })}
+
+                    {/* Speed Range row — shows each pitcher's speed differential */}
+                    <tr className="cmp-attr-row">
+                      <td className="cmp-td cmp-td--label cmp-pitch-label"
+                          title="Fastest − slowest pitch speed. Larger = harder to time.">
+                        ⚡ Speed Range
+                      </td>
+                      {cards.map(({ uuid, item }) => {
+                        const s = pitchArsenalStats(item.pitches)
+                        const vals = cards.map(c => pitchArsenalStats(c.item.pitches)?.speedRange ?? null)
+                        const bi   = bestIdx(vals)
+                        const i    = cards.findIndex(c => c.uuid === uuid)
+                        const range = s?.speedRange ?? null
+                        return (
+                          <td key={uuid} className={`cmp-td ${i === bi && range != null ? 'cmp-td--best' : ''}`}>
+                            {range != null && range > 0 ? (
+                              <span style={{ color: range >= 15 ? '#4ade80' : '#fbbf24', fontWeight: 700,
+                                             fontFamily: "'Space Mono', monospace", fontSize: 13 }}>
+                                {range} MPH
+                              </span>
+                            ) : (
+                              <span className="cmp-no-pitch">—</span>
+                            )}
+                          </td>
+                        )
+                      })}
+                    </tr>
                   </>
                 )}
 

@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { API_BASE } from '../constants'
+import { pitchArsenalStats, hasPitchType } from '../utils/pitches'
 
 // ── Module-level caches (survive component remounts) ──────────────
 // Keyed by "type" so we could extend to other card types in future.
@@ -63,38 +64,48 @@ async function fetchAttr(uuid) {
 /** Apply attribute threshold filters to a fetched item.json payload */
 export function matchesAttrFilters(attrs, filters) {
   if (!attrs) return false
-  const check = (val, min) => min === '' || min == null || (val != null && val >= +min)
+  const check    = (val, min) => min === '' || min == null || (val != null && val >= +min)
   const checkMax = (val, max) => max === '' || max == null || (val != null && val <= +max)
 
   // Hitting
-  if (!check(attrs.contact_right,        filters.minContactR))      return false
-  if (!check(attrs.contact_left,         filters.minContactL))      return false
-  if (!check(attrs.power_right,          filters.minPowerR))        return false
-  if (!check(attrs.power_left,           filters.minPowerL))        return false
-  if (!check(attrs.plate_vision,         filters.minVision))        return false
-  if (!check(attrs.plate_discipline,     filters.minDiscipline))    return false
-  if (!check(attrs.batting_clutch,       filters.minBattingClutch)) return false
-  if (!check(attrs.speed,                filters.minSpeed))         return false
+  if (!check(attrs.contact_right,    filters.minContactR))       return false
+  if (!check(attrs.contact_left,     filters.minContactL))       return false
+  if (!check(attrs.power_right,      filters.minPowerR))         return false
+  if (!check(attrs.power_left,       filters.minPowerL))         return false
+  if (!check(attrs.plate_vision,     filters.minVision))         return false
+  if (!check(attrs.plate_discipline, filters.minDiscipline))     return false
+  if (!check(attrs.batting_clutch,   filters.minBattingClutch))  return false
+  if (!check(attrs.speed,            filters.minSpeed))          return false
 
   // Pitching
-  if (!check(attrs.k_per_bf,             filters.minKper9))         return false
-  if (!checkMax(attrs.bb_per_bf,         filters.maxBBper9))        return false
-  if (!checkMax(attrs.hits_per_bf,       filters.maxHper9))         return false
-  if (!checkMax(attrs.hr_per_bf,         filters.maxHRper9))        return false
-  if (!check(attrs.pitch_velocity,       filters.minVelocity))      return false
-  if (!check(attrs.pitch_control,        filters.minControl))       return false
-  if (!check(attrs.pitch_movement,       filters.minMovement))      return false
-  if (!check(attrs.stamina,              filters.minStamina))       return false
-  if (!check(attrs.pitching_clutch,      filters.minPitchingClutch)) return false
+  if (!check(attrs.k_per_bf,         filters.minKper9))          return false
+  if (!checkMax(attrs.bb_per_bf,     filters.maxBBper9))         return false
+  if (!checkMax(attrs.hits_per_bf,   filters.maxHper9))          return false
+  if (!checkMax(attrs.hr_per_bf,     filters.maxHRper9))         return false
+  if (!check(attrs.pitch_velocity,   filters.minVelocity))       return false
+  if (!check(attrs.pitch_control,    filters.minControl))        return false
+  if (!check(attrs.pitch_movement,   filters.minMovement))       return false
+  if (!check(attrs.stamina,          filters.minStamina))        return false
+  if (!check(attrs.pitching_clutch,  filters.minPitchingClutch)) return false
 
   // Fielding
-  if (!check(attrs.fielding_ability,     filters.minFielding))      return false
-  if (!check(attrs.arm_strength,         filters.minArmStrength))   return false
-  if (!check(attrs.reaction_time,        filters.minReaction))      return false
+  if (!check(attrs.fielding_ability, filters.minFielding))       return false
+  if (!check(attrs.arm_strength,     filters.minArmStrength))    return false
+  if (!check(attrs.reaction_time,    filters.minReaction))       return false
 
   // Bats/Throws
   if (filters.batHand   && attrs.bat_hand   !== filters.batHand)   return false
   if (filters.throwHand && attrs.throw_hand !== filters.throwHand) return false
+
+  // Arsenal filters (operate on pitches array)
+  const pitches = attrs.pitches || []
+  if (filters.pitchType && !hasPitchType(pitches, filters.pitchType))    return false
+  if (filters.minPitchCount !== '' && filters.minPitchCount != null &&
+      pitches.length < +filters.minPitchCount)                             return false
+  if (filters.minSpeedRange !== '' && filters.minSpeedRange != null) {
+    const s = pitchArsenalStats(pitches)
+    if (!s || s.speedRange < +filters.minSpeedRange)                      return false
+  }
 
   return true
 }
@@ -108,6 +119,8 @@ export function hasAttrFilters(filters) {
     'minVelocity','minControl','minMovement','minStamina','minPitchingClutch',
     'minFielding','minArmStrength','minReaction',
     'batHand','throwHand',
+    // Arsenal
+    'pitchType','minPitchCount','minSpeedRange',
   ]
   return attrKeys.some(k => filters[k] !== '' && filters[k] != null)
 }
@@ -242,33 +255,61 @@ export function useCardFinder() {
 
 /** Build final result rows with merged catalog, attr, and listing data */
 function buildResults(items, attrResults, listingMap, filters) {
-  return items.map(item => {
+  const rows = items.map(item => {
     const attrs   = attrResults[item.uuid] || null
     const listing = listingMap?.get(item.uuid) || null
-    return { item, attrs, listing }
-  }).sort((a, b) => {
-    // Sort by the first active attribute filter (descending), then OVR
+    // Pre-compute arsenal stats so sort can use them
+    const arsenal = attrs?.pitches ? pitchArsenalStats(attrs.pitches) : null
+    return { item, attrs, listing, arsenal }
+  })
+
+  rows.sort((a, b) => {
+    // Arsenal sort keys take priority if those filters are active
+    if (filters.minSpeedRange !== '' && filters.minSpeedRange != null) {
+      const av = a.arsenal?.speedRange ?? 0
+      const bv = b.arsenal?.speedRange ?? 0
+      if (bv !== av) return bv - av
+    }
+    if (filters.minPitchCount !== '' && filters.minPitchCount != null) {
+      const av = a.arsenal?.count ?? 0
+      const bv = b.arsenal?.count ?? 0
+      if (bv !== av) return bv - av
+    }
+
+    // Then by primary attribute filter
     const primaryAttr = getPrimaryAttr(filters)
     if (primaryAttr && a.attrs && b.attrs) {
       const av = a.attrs[primaryAttr] ?? 0
       const bv = b.attrs[primaryAttr] ?? 0
       if (bv !== av) return bv - av
     }
+
+    // Fallback: OVR descending
     const ao = typeof a.item.ovr === 'number' ? a.item.ovr : parseInt(a.item.ovr, 10)
     const bo = typeof b.item.ovr === 'number' ? b.item.ovr : parseInt(b.item.ovr, 10)
     return (bo || 0) - (ao || 0)
   })
+
+  return rows
 }
 
 const ATTR_FILTER_PRIORITY = [
-  ['minContactR', 'contact_right'], ['minContactL', 'contact_left'],
-  ['minPowerR', 'power_right'],     ['minPowerL', 'power_left'],
-  ['minVision', 'plate_vision'],    ['minDiscipline', 'plate_discipline'],
-  ['minBattingClutch', 'batting_clutch'], ['minSpeed', 'speed'],
-  ['minKper9', 'k_per_bf'],         ['minVelocity', 'pitch_velocity'],
-  ['minControl', 'pitch_control'],  ['minMovement', 'pitch_movement'],
-  ['minStamina', 'stamina'],        ['minFielding', 'fielding_ability'],
-  ['minArmStrength', 'arm_strength'], ['minReaction', 'reaction_time'],
+  ['minContactR',       'contact_right'   ],
+  ['minContactL',       'contact_left'    ],
+  ['minPowerR',         'power_right'     ],
+  ['minPowerL',         'power_left'      ],
+  ['minVision',         'plate_vision'    ],
+  ['minDiscipline',     'plate_discipline'],
+  ['minBattingClutch',  'batting_clutch'  ],
+  ['minSpeed',          'speed'           ],
+  ['minKper9',          'k_per_bf'        ],
+  ['minVelocity',       'pitch_velocity'  ],
+  ['minControl',        'pitch_control'   ],
+  ['minMovement',       'pitch_movement'  ],
+  ['minStamina',        'stamina'         ],
+  ['minFielding',       'fielding_ability'],
+  ['minArmStrength',    'arm_strength'    ],
+  ['minReaction',       'reaction_time'   ],
 ]
 function getPrimaryAttr(filters) {
   for (const [fk, attrKey] of ATTR_FILTER_PRIORITY) {
