@@ -17,6 +17,7 @@ import SnipeAlertBanner  from './components/SnipeAlertBanner'
 import GameHistory        from './components/GameHistory'
 import CardFinder            from './components/CardFinder'
 import CollectionTracker    from './components/CollectionTracker'
+import RosterUpdates        from './components/RosterUpdates'
 import ComparisonTray    from './components/ComparisonTray'
 import ComparisonModal   from './components/ComparisonModal'
 import { useListings }    from './hooks/useListings'
@@ -483,7 +484,7 @@ export default function App() {
 
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && activeTab !== 'collections' && (
+      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && activeTab !== 'collections' && activeTab !== 'rosterupdates' && (
         <PresetBar
           presets={presets}
           activeId={activePresetId}
@@ -497,7 +498,7 @@ export default function App() {
         />
       )}
 
-      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && activeTab !== 'collections' && (
+      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && activeTab !== 'collections' && activeTab !== 'rosterupdates' && (
         <FiltersBar
           filters={filters}
           onFilterChange={handleFilterChange}
@@ -552,6 +553,12 @@ export default function App() {
       {activeTab === 'collections' && (
         <main className="main">
           <CollectionTracker allListings={autoMarket.allListings} />
+        </main>
+      )}
+
+      {activeTab === 'rosterupdates' && (
+        <main className="main">
+          <RosterUpdates allListings={autoMarket.allListings} />
         </main>
       )}
 

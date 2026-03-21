@@ -3434,3 +3434,651 @@ tr:hover .card-name-text:hover {
   font-family: 'Space Mono', monospace;
 }
 .ct-series-meta .ct-cost { color: #fbbf24; }
+
+/* ═══════════════════════════════════════════════════════════════
+   ROSTER UPDATE TRACKER
+   ═══════════════════════════════════════════════════════════════ */
+
+.ru-wrap { padding: 16px 0; }
+
+/* ── Countdown banner ─────────────────────────────────────────── */
+.ru-countdown {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  background: linear-gradient(90deg, rgba(250,204,21,0.07), rgba(10,22,36,0));
+  border-left: 3px solid rgba(250,204,21,0.5);
+  border-radius: 0 6px 6px 0;
+  font-size: 13px;
+  color: #c0b070;
+}
+.ru-countdown strong { color: #facc15; }
+.ru-countdown-icon { font-size: 16px; }
+
+/* ── Layout: timeline sidebar + detail panel ──────────────────── */
+.ru-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 0;
+  align-items: start;
+  min-height: 400px;
+  border: 1px solid rgba(77,166,255,0.12);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* ── Timeline sidebar ─────────────────────────────────────────── */
+.ru-timeline {
+  border-right: 1px solid rgba(77,166,255,0.1);
+  background: rgba(5,14,26,0.7);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-height: 300px;
+}
+.ru-timeline-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #3a6a8a;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-family: 'Orbitron', sans-serif;
+  padding: 12px 12px 6px;
+}
+.ru-timeline-empty {
+  padding: 16px 12px;
+  font-size: 12px;
+  color: #3a5a7a;
+  line-height: 1.6;
+}
+.ru-timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  color: #5a8aaa;
+  border-left: 2px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+.ru-timeline-item:hover { background: rgba(77,166,255,0.06); color: #8abadd; }
+.ru-timeline-item--active {
+  background: rgba(77,166,255,0.1);
+  border-left-color: #4da6ff;
+  color: #c0d8f0;
+}
+.ru-timeline-item--future { opacity: 0.55; }
+.ru-tl-dot {
+  font-size: 10px;
+  margin-top: 2px;
+  color: #4da6ff;
+  flex-shrink: 0;
+  font-family: 'Space Mono', monospace;
+}
+.ru-tl-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ru-tl-name {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: normal;
+  word-break: break-word;
+}
+.ru-tl-date { font-size: 10px; color: #3a6a8a; font-family: 'Space Mono', monospace; }
+.ru-tl-days { font-size: 10px; color: #facc15; font-family: 'Space Mono', monospace; }
+
+/* ── Detail wrap ──────────────────────────────────────────────── */
+.ru-detail-wrap {
+  padding: 16px;
+  min-width: 0;
+}
+
+/* ── Unreleased panel ─────────────────────────────────────────── */
+.ru-unreleased {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 48px 32px;
+}
+.ru-unreleased-icon  { font-size: 40px; }
+.ru-unreleased-title { font-size: 18px; font-weight: 700; color: #c0d8f0; font-family: 'Orbitron', sans-serif; }
+.ru-unreleased-sub   { font-size: 14px; color: #4a7a9b; }
+.ru-unreleased-date  { font-size: 13px; color: #8abadd; background: rgba(77,166,255,0.08); padding: 8px 18px; border-radius: 8px; }
+.ru-unreleased-days  { color: #facc15; font-weight: 700; }
+.ru-unreleased-note  { max-width: 400px; font-size: 12px; color: #3a5a7a; line-height: 1.7; margin-top: 4px; }
+
+/* ── Released update detail ───────────────────────────────────── */
+.ru-detail { display: flex; flex-direction: column; gap: 20px; }
+
+.ru-detail-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(77,166,255,0.08);
+}
+
+/* ── Loading ── */
+.ru-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #4a7a9b;
+  padding: 48px 0;
+  font-size: 14px;
+}
+
+/* ── Section wrapper ──────────────────────────────────────────── */
+.ru-section { display: flex; flex-direction: column; gap: 10px; }
+.ru-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Filter pills ─────────────────────────────────────────────── */
+.ru-filter-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── Loading ── */
+.ru-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #4a7a9b;
+  padding: 48px 0;
+  font-size: 14px;
+}
+
+/* ── Update view ── */
+.ru-update-view { display: flex; flex-direction: column; gap: 16px; }
+
+.ru-update-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.ru-selector-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #4a7a9b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+/* ── Update header ── */
+.ru-update-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(10,22,36,0.6);
+  border: 1px solid rgba(77,166,255,0.12);
+  border-radius: 8px;
+}
+
+.ru-update-title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ru-update-name {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'Orbitron', sans-serif;
+  color: #c0d8f0;
+  letter-spacing: 0.3px;
+}
+.ru-update-date {
+  font-size: 12px;
+  color: #4a7a9b;
+  font-family: 'Space Mono', monospace;
+}
+
+/* ── Summary pills ── */
+.ru-summary-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ru-pill {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Space Mono', monospace;
+  background: rgba(77,166,255,0.08);
+  border: 1px solid rgba(77,166,255,0.2);
+  color: #5a9ab5;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.3px;
+}
+.ru-pill:hover { background: rgba(77,166,255,0.14); border-color: rgba(77,166,255,0.35); color: #8ac8f0; }
+.ru-pill--active { background: rgba(77,166,255,0.2); border-color: rgba(77,166,255,0.5); color: #a0d4ff; }
+.ru-pill--up    { border-color: rgba(74,222,128,0.3); color: #4ade80; }
+.ru-pill--up.ru-pill--active { background: rgba(74,222,128,0.12); }
+.ru-pill--down  { border-color: rgba(248,113,113,0.3); color: #f87171; }
+.ru-pill--down.ru-pill--active { background: rgba(248,113,113,0.12); }
+.ru-pill--tier-up { border-color: rgba(250,204,21,0.4); color: #facc15; }
+.ru-pill--tier-up.ru-pill--active { background: rgba(250,204,21,0.12); }
+
+/* ── OVR delta badge ── */
+.ru-delta-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+/* ── Tier change badge ── */
+.ru-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  font-family: 'Orbitron', sans-serif;
+  letter-spacing: 0.5px;
+  margin: 0 2px;
+}
+.ru-tier-badge--up   { background: rgba(250,204,21,0.15); color: #facc15; border: 1px solid rgba(250,204,21,0.4); }
+.ru-tier-badge--down { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+
+.ru-pos-change {
+  font-size: 10px;
+  font-family: 'Space Mono', monospace;
+  color: #7bc4f0;
+  background: rgba(77,166,255,0.1);
+  border: 1px solid rgba(77,166,255,0.25);
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+/* ── Tier-change highlight band ── */
+.ru-tier-band {
+  background: linear-gradient(135deg, rgba(250,204,21,0.06), rgba(10,22,36,0.8));
+  border: 1px solid rgba(250,204,21,0.25);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ru-tier-band-label {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Orbitron', sans-serif;
+  color: #facc15;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.ru-tier-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.ru-tier-card {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: rgba(250,204,21,0.04);
+  border: 1px solid rgba(250,204,21,0.15);
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-width: 200px;
+  max-width: 260px;
+}
+.ru-tier-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ru-tier-card-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #d0e8ff;
+}
+.ru-tier-card-meta {
+  font-size: 11px;
+  color: #4a7a9b;
+}
+.ru-tier-ovr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: 14px;
+  margin-top: 2px;
+}
+.ru-tier-arrow { color: #3a5a7a; }
+.ru-tier-qs-jump {
+  font-size: 11px;
+  font-family: 'Space Mono', monospace;
+  color: #4ade80;
+  font-weight: 700;
+  background: rgba(74,222,128,0.08);
+  border-radius: 4px;
+  padding: 1px 6px;
+  width: fit-content;
+  margin-top: 2px;
+}
+.ru-tier-market {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+/* ── Player image in table ── */
+.ru-player-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: rgba(77,166,255,0.08);
+}
+.ru-player-img--placeholder {
+  border: 1px solid rgba(77,166,255,0.12);
+}
+
+/* ── Attribute change chips ── */
+.ru-attr-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ru-attr-chip {
+  font-size: 10px;
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.ru-attr-more {
+  font-size: 10px;
+  color: #3a5a7a;
+  font-family: 'Space Mono', monospace;
+}
+
+/* ── Row highlights ── */
+.ru-row--tier-up  { background: rgba(250,204,21,0.04) !important; }
+.ru-row--tier-down { background: rgba(248,113,113,0.04) !important; }
+.ru-row--selected { background: rgba(77,166,255,0.08) !important; outline: 1px solid rgba(77,166,255,0.25); }
+
+/* ── Table header sort ── */
+.ru-th {
+  padding: 8px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'Orbitron', sans-serif;
+  color: #3a6a8a;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  text-align: center;
+  white-space: nowrap;
+  background: rgba(5,14,26,0.8);
+  border-bottom: 1px solid rgba(77,166,255,0.1);
+}
+.ru-th--sort { cursor: pointer; user-select: none; }
+.ru-th--sort:hover { color: #6abadd; }
+.ru-th--active { color: #a0d4ff; }
+
+/* ── History view ── */
+.ru-history-view { display: flex; flex-direction: column; gap: 14px; }
+.ru-tier-count { color: #facc15; font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; }
+.ru-history-note {
+  font-size: 11px;
+  color: #2a4a6a;
+  text-align: center;
+  margin-top: 4px;
+}
+
+/* ── Watch list view ── */
+.ru-watchlist-view { display: flex; flex-direction: column; gap: 16px; }
+.ru-watchlist-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ru-watchlist-desc {
+  font-size: 12px;
+  color: #3a6a8a;
+  margin: 4px 0 0;
+  max-width: 560px;
+  line-height: 1.6;
+}
+
+/* ── Watch list search ── */
+.ru-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.ru-search-input {
+  flex: 1;
+  min-width: 240px;
+  padding: 9px 14px;
+  background: rgba(5,14,26,0.8);
+  border: 1px solid rgba(77,166,255,0.2);
+  border-radius: 8px;
+  color: #c0d8f0;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+.ru-search-input:focus { border-color: rgba(77,166,255,0.5); }
+.ru-search-note { font-size: 11px; color: #3a6a8a; }
+
+/* ── Search results dropdown ── */
+.ru-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(5,14,26,0.95);
+  border: 1px solid rgba(77,166,255,0.2);
+  border-radius: 8px;
+  overflow: hidden;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.ru-search-result-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #8abadd;
+  font-size: 12px;
+  transition: background 0.1s;
+}
+.ru-search-result-row:hover { background: rgba(77,166,255,0.07); }
+.ru-result-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.ru-result-name { flex: 1; font-weight: 700; color: #c0d8f0; }
+.ru-result-meta { color: #4a7a9b; font-size: 11px; }
+.ru-already-added { font-size: 10px; color: #3a6a8a; font-style: italic; }
+.ru-add-btn {
+  font-size: 10px;
+  font-weight: 700;
+  color: #4ade80;
+  background: rgba(74,222,128,0.1);
+  border: 1px solid rgba(74,222,128,0.3);
+  border-radius: 8px;
+  padding: 2px 8px;
+}
+
+/* ── Watch list cards ── */
+.ru-watchlist-cards { display: flex; flex-direction: column; gap: 12px; }
+.ru-watch-card {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: rgba(10,22,36,0.6);
+  border: 1px solid rgba(77,166,255,0.14);
+  border-radius: 10px;
+  padding: 14px 40px 14px 14px;
+  transition: border-color 0.2s;
+}
+.ru-watch-card:hover { border-color: rgba(77,166,255,0.25); }
+.ru-watch-card-left {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  flex: 0 0 220px;
+}
+.ru-watch-card-info { display: flex; flex-direction: column; gap: 4px; }
+.ru-watch-name { font-size: 14px; font-weight: 700; color: #c0d8f0; }
+.ru-watch-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ru-to-diamond {
+  font-size: 11px;
+  color: #facc15;
+  background: rgba(250,204,21,0.08);
+  border: 1px solid rgba(250,204,21,0.2);
+  border-radius: 6px;
+  padding: 2px 8px;
+  width: fit-content;
+  margin-top: 4px;
+}
+
+.ru-watch-card-right {
+  flex: 1;
+  min-width: 220px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+.ru-watch-stat { display: flex; flex-direction: column; gap: 3px; }
+
+.ru-remove-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #3a5a7a;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+.ru-remove-btn:hover { color: #f87171; }
+
+/* ── QS Projection table ── */
+.ru-qs-section { grid-column: 1 / -1; }
+.ru-qs-label {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'Orbitron', sans-serif;
+  color: #3a6a8a;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 5px;
+}
+.ru-qs-table { display: flex; flex-direction: column; gap: 3px; }
+.ru-qs-row {
+  display: grid;
+  grid-template-columns: 28px 36px 1fr auto auto;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  color: #4a7a9b;
+  transition: background 0.1s;
+}
+.ru-qs-row--current {
+  background: rgba(77,166,255,0.08);
+  color: #8abadd;
+}
+.ru-qs-row--target {
+  background: rgba(250,204,21,0.06);
+  outline: 1px solid rgba(250,204,21,0.2);
+}
+.ru-qs-ovr { font-weight: 700; color: #8abadd; }
+.ru-qs-rarity { font-size: 9px; font-weight: 700; letter-spacing: 0.5px; }
+.ru-qs-floor-val { font-weight: 700; color: #fbbf24; text-align: right; }
+.ru-qs-jump { font-weight: 700; font-size: 10px; }
+.ru-qs-cur-tag, .ru-qs-target-tag {
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  font-family: 'Orbitron', sans-serif;
+}
+.ru-qs-cur-tag   { background: rgba(77,166,255,0.15); color: #6abadd; }
+.ru-qs-target-tag { background: rgba(250,204,21,0.12); color: #facc15; }
+
+/* ── Target OVR input ── */
+.ru-target-wrap { display: flex; flex-direction: column; gap: 4px; }
+
+/* ── Notes ── */
+.ru-note-display {
+  cursor: pointer;
+  font-size: 11px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: background 0.1s;
+  grid-column: 1 / -1;
+}
+.ru-note-display:hover { background: rgba(77,166,255,0.06); }
+.ru-note-text { color: #6abadd; }
+.ru-note-add { color: #2a4a6a; font-style: italic; }
+.ru-note-edit { grid-column: 1 / -1; }
+.ru-note-input {
+  width: 100%;
+  padding: 6px 10px;
+  background: rgba(5,14,26,0.8);
+  border: 1px solid rgba(77,166,255,0.2);
+  border-radius: 6px;
+  color: #c0d8f0;
+  font-size: 11px;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+}
+.ru-note-input:focus { border-color: rgba(77,166,255,0.4); }

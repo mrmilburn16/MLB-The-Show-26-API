@@ -4,6 +4,7 @@ const TABS = [
   { key: 'scanner',     label: '🎯 Bargain Scanner',  hint: 'Multi-page sweep for cards priced below average' },
   { key: 'cardfinder',  label: '🃏 Card Finder',      hint: 'Search every card by attribute thresholds' },
   { key: 'collections', label: '📦 Collections',      hint: 'Collection cost tracker by team, rarity, and series' },
+  { key: 'rosterupdates', label: '📈 Roster Updates', hint: 'Track rating changes and price impact from roster updates' },
   { key: 'gamehistory', label: '📜 Game History',     hint: 'Look up any player\'s recent Diamond Dynasty game log' },
 ]
 
