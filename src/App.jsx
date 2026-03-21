@@ -1,22 +1,24 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import Header          from './components/Header'
-import TabBar          from './components/TabBar'
-import PresetBar       from './components/PresetBar'
-import FiltersBar      from './components/FiltersBar'
-import AdvancedFilters from './components/AdvancedFilters'
-import VelocityBanner  from './components/VelocityBanner'
-import ListingsTable   from './components/ListingsTable'
-import HistoricalPanel from './components/HistoricalPanel'
-import Pagination      from './components/Pagination'
-import ErrorBox        from './components/ErrorBox'
-import LoadingSpinner  from './components/LoadingSpinner'
-import BargainScanner  from './components/BargainScanner'
-import FullMarketScan  from './components/FullMarketScan'
-import NearQSPanel     from './components/NearQSPanel'
+import Header            from './components/Header'
+import TabBar            from './components/TabBar'
+import PresetBar         from './components/PresetBar'
+import FiltersBar        from './components/FiltersBar'
+import AdvancedFilters   from './components/AdvancedFilters'
+import VelocityBanner    from './components/VelocityBanner'
+import ListingsTable     from './components/ListingsTable'
+import HistoricalPanel   from './components/HistoricalPanel'
+import Pagination        from './components/Pagination'
+import ErrorBox          from './components/ErrorBox'
+import LoadingSpinner    from './components/LoadingSpinner'
+import BargainScanner    from './components/BargainScanner'
+import FullMarketScan    from './components/FullMarketScan'
+import NearQSPanel       from './components/NearQSPanel'
+import SnipeAlertBanner  from './components/SnipeAlertBanner'
 import { useListings }    from './hooks/useListings'
 import { useAutoMarket }  from './hooks/useAutoMarket'
 import { useVelocity }    from './hooks/useVelocity'
 import { usePresets }     from './hooks/usePresets'
+import { useSnipeAlerts } from './hooks/useSnipeAlerts'
 import { medianOf }       from './utils/snipe'
 import {
   DEFAULT_FILTERS, DEFAULT_ADV,
@@ -88,6 +90,23 @@ export default function App() {
   const error         = isMlbCard ? null                     : otherError
 
   const { velocityMap, pendingCount, requestUuid } = useVelocity()
+
+  // ── Snipe alerts ──
+  const {
+    alerts:        snipeAlerts,
+    history:       snipeHistory,
+    historyOpen:   snipeHistoryOpen,
+    setHistoryOpen: setSnipeHistoryOpen,
+    threshold:     snipeThreshold,
+    setThreshold:  setSnipeThreshold,
+    soundEnabled:  snipeSoundEnabled,
+    setSoundEnabled: setSnipeSoundEnabled,
+    runSnipeCheck,
+    updateAvailability,
+    dismissAlert:  dismissSnipeAlert,
+    dismissAll:    dismissAllSnipes,
+    clearHistory:  clearSnipeHistory,
+  } = useSnipeAlerts()
 
   // ── Proactively queue velocity for top 50 once full data loads ──
   const enrichedListingsRef = useRef([])
@@ -349,6 +368,52 @@ export default function App() {
     }
   }, [lastUpdated, displayListings])
 
+  // Keep stable refs so snipe effects always read latest values without re-subscribing
+  const velocityMapRef       = useRef({})
+  const enrichedListingsRef2 = useRef([])
+  const snipeThresholdRef    = useRef(snipeThreshold)
+  velocityMapRef.current       = velocityMap
+  enrichedListingsRef2.current = enrichedListings
+  snipeThresholdRef.current    = snipeThreshold
+
+  // ── Snipe detection + coverage expansion on every auto-refresh ──
+  useEffect(() => {
+    if (!lastUpdated || !isFullData) return
+
+    const allListings = enrichedListingsRef2.current
+    const velMap      = velocityMapRef.current
+
+    // 1. Run snipe detection across all listings with cached velocity data
+    runSnipeCheck(allListings, velMap, snipeThresholdRef.current)
+
+    // 2. Update "still available" status in history
+    updateAvailability(allListings)
+
+    // 3. Expand coverage: fetch velocity for 10 random uncached cards,
+    //    prioritising by spread% (high spread = more flip room = more snipe potential)
+    const uncached = allListings.filter(l => {
+      const uuid = l.uuid || l.item?.uuid
+      return uuid && !velMap[uuid]
+    })
+
+    // Sort by existing spread heuristic (sell - buy / buy) descending, then shuffle the rest
+    const withSpread = uncached.filter(l => l.best_buy_price > 0 && l.best_sell_price > 0)
+    const noSpread   = uncached.filter(l => !(l.best_buy_price > 0 && l.best_sell_price > 0))
+
+    withSpread.sort((a, b) => {
+      const sa = (a.best_sell_price - a.best_buy_price) / a.best_buy_price
+      const sb = (b.best_sell_price - b.best_buy_price) / b.best_buy_price
+      return sb - sa
+    })
+    const shuffledRest = [...noSpread].sort(() => Math.random() - 0.5)
+    const candidates   = [...withSpread, ...shuffledRest].slice(0, 10)
+
+    candidates.forEach(l => {
+      const uuid = l.uuid || l.item?.uuid
+      if (uuid) requestUuid(uuid)
+    })
+  }, [lastUpdated, isFullData, runSnipeCheck, updateAvailability, requestUuid])
+
   // ── Selected listing ──
   const selectedListing    = selectedUuid
     ? displayListings.find(l => (l.uuid || l.item?.uuid) === selectedUuid)
@@ -413,6 +478,22 @@ export default function App() {
       )}
 
       {activeTab === 'market' && <VelocityBanner pendingCount={pendingCount} />}
+
+      {activeTab === 'market' && (
+        <SnipeAlertBanner
+          alerts={snipeAlerts}
+          history={snipeHistory}
+          historyOpen={snipeHistoryOpen}
+          setHistoryOpen={setSnipeHistoryOpen}
+          threshold={snipeThreshold}
+          setThreshold={setSnipeThreshold}
+          soundEnabled={snipeSoundEnabled}
+          setSoundEnabled={setSnipeSoundEnabled}
+          dismissAlert={dismissSnipeAlert}
+          dismissAll={dismissAllSnipes}
+          clearHistory={clearSnipeHistory}
+        />
+      )}
 
       {activeTab === 'scanner' && (
         <main className="main">
