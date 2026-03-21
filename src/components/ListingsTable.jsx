@@ -117,6 +117,7 @@ function ColumnMenu({ colOrder, hidden, onToggle, onReset, onClose }) {
 export default function ListingsTable({
   listings, sort, order, page,
   onSort, onSelectCard, onVisible, selectedUuid, wideSpreadUuids, newEntryUUIDs,
+  onCompare, compareUuids, isTrayFull,
 }) {
   const perPage     = 25
   const rowRefs     = useRef(new Map())
@@ -493,6 +494,7 @@ export default function ListingsTable({
       <table>
         <thead>
           <tr>
+            {onCompare && <th style={{ width: 38 }} title="Add to comparison tray" />}
             <th style={{ width: 50 }}>#</th>
             {visibleCols.map(key => renderHeader(key))}
           </tr>
@@ -513,6 +515,7 @@ export default function ListingsTable({
             const isSnipeGood  = l._snipeDiscount != null && l._snipeDiscount >= SNIPE_GOOD_THRESHOLD && !isSnipe
             const isWideSpread = wideSpreadUuids?.has(uuid)
             const isNewEntry   = newEntryUUIDs?.has(uuid)
+            const isCompared   = compareUuids?.has(uuid)
 
             const ppmColor = l._profitPerMin > 500 ? '#4ade80'
               : l._profitPerMin > 100 ? '#fbbf24'
@@ -544,6 +547,19 @@ export default function ListingsTable({
                 style={{ borderLeft: `3px solid ${r.glow}`, background: rowBg }}
                 onClick={() => onSelectCard(uuid)}
               >
+                {onCompare && (
+                  <td style={{ padding: '0 6px', textAlign: 'center' }}
+                      onClick={e => e.stopPropagation()}>
+                    <button
+                      className={`cmp-row-btn ${isCompared ? 'cmp-row-btn--active' : ''} ${isTrayFull && !isCompared ? 'cmp-row-btn--full' : ''}`}
+                      onClick={() => onCompare(l)}
+                      title={isCompared ? 'Remove from comparison' : isTrayFull ? 'Tray full (max 3)' : 'Add to comparison'}
+                      disabled={isTrayFull && !isCompared}
+                    >
+                      {isCompared ? '✓' : '+'}
+                    </button>
+                  </td>
+                )}
                 <td style={{ color: '#556', fontSize: 12 }}>{num}</td>
                 {visibleCols.map(key => renderCell(key, l, ctx))}
               </tr>

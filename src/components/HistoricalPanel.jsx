@@ -296,6 +296,7 @@ export default function HistoricalPanel({
   listing, velocityData, velocityLoading,
   itemData, itemLoading,
   onClose,
+  onCompare, isInTray, isTrayFull,
 }) {
   if (!listing) return null
 
@@ -371,7 +372,19 @@ export default function HistoricalPanel({
             </p>
           </div>
         </div>
-        <button className="close-btn" onClick={onClose}>✕</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {onCompare && (
+            <button
+              className={`cmp-panel-btn ${isInTray ? 'cmp-panel-btn--active' : ''} ${isTrayFull && !isInTray ? 'cmp-panel-btn--full' : ''}`}
+              onClick={() => onCompare(listing)}
+              title={isInTray ? 'Remove from comparison tray' : isTrayFull ? 'Tray full (max 3)' : 'Add to comparison tray'}
+              disabled={isTrayFull && !isInTray}
+            >
+              {isInTray ? '✓ In Tray' : '⚡ Compare'}
+            </button>
+          )}
+          <button className="close-btn" onClick={onClose}>✕</button>
+        </div>
       </div>
 
       {/* ── Player Info Bar ── */}

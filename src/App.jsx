@@ -14,13 +14,16 @@ import BargainScanner    from './components/BargainScanner'
 import FullMarketScan    from './components/FullMarketScan'
 import NearQSPanel       from './components/NearQSPanel'
 import SnipeAlertBanner  from './components/SnipeAlertBanner'
-import GameHistory       from './components/GameHistory'
+import GameHistory        from './components/GameHistory'
+import ComparisonTray    from './components/ComparisonTray'
+import ComparisonModal   from './components/ComparisonModal'
 import { useListings }    from './hooks/useListings'
 import { useAutoMarket }  from './hooks/useAutoMarket'
 import { useVelocity }    from './hooks/useVelocity'
 import { usePresets }     from './hooks/usePresets'
-import { useSnipeAlerts } from './hooks/useSnipeAlerts'
-import { useItemData }    from './hooks/useItemData'
+import { useSnipeAlerts }  from './hooks/useSnipeAlerts'
+import { useItemData }     from './hooks/useItemData'
+import { useComparison }   from './hooks/useComparison'
 import { medianOf }       from './utils/snipe'
 import {
   DEFAULT_FILTERS, DEFAULT_ADV,
@@ -93,6 +96,23 @@ export default function App() {
 
   const { velocityMap, pendingCount, requestUuid } = useVelocity()
   const { itemMap, loadingUuid: itemLoadingUuid, requestItem } = useItemData()
+
+  // ── Comparison tray ──
+  const {
+    tray:          cmpTray,
+    isModalOpen:   cmpModalOpen,
+    history:       cmpHistory,
+    addToTray:     addToCompare,
+    removeFromTray: removeFromCompare,
+    clearTray:     clearCompareTray,
+    openModal:     openCompareModal,
+    closeModal:    closeCompareModal,
+    clearHistory:  clearCmpHistory,
+    isInTray:      isInCompareTray,
+    isTrayFull:    isCompareTrayFull,
+  } = useComparison()
+
+  const compareUuids = useMemo(() => new Set(cmpTray.map(t => t.uuid)), [cmpTray])
 
   // ── Snipe alerts ──
   const {
@@ -200,6 +220,14 @@ export default function App() {
       requestUuid(uuid)
       requestItem(uuid)
     }
+  }
+
+  // ── Comparison: toggle card in/out of tray ──
+  function handleCompare(listing) {
+    const uuid = listing?.uuid || listing?.item?.uuid
+    if (!uuid) return
+    if (isInCompareTray(uuid)) removeFromCompare(uuid)
+    else addToCompare(listing)
   }
 
   // ── Enrich active listings with velocity data ──
@@ -581,6 +609,9 @@ export default function App() {
                 selectedUuid={selectedUuid}
                 wideSpreadUuids={wideSpreadUuids}
                 newEntryUUIDs={newEntryUUIDs}
+                onCompare={handleCompare}
+                compareUuids={compareUuids}
+                isTrayFull={isCompareTrayFull}
               />
 
               {selectedListing && (
@@ -591,6 +622,9 @@ export default function App() {
                   itemData={selectedUuid ? itemMap[selectedUuid] : null}
                   itemLoading={itemLoadingUuid === selectedUuid}
                   onClose={() => setSelectedUuid(null)}
+                  onCompare={handleCompare}
+                  isInTray={selectedUuid ? isInCompareTray(selectedUuid) : false}
+                  isTrayFull={isCompareTrayFull}
                 />
               )}
 
@@ -606,6 +640,27 @@ export default function App() {
           )}
         </main>
       )}
+
+      {/* ── Comparison Tray (fixed bottom bar, always mounted) ── */}
+      <ComparisonTray
+        tray={cmpTray}
+        history={cmpHistory}
+        isTrayFull={isCompareTrayFull}
+        onRemove={removeFromCompare}
+        onClear={clearCompareTray}
+        onCompareNow={openCompareModal}
+        onClearHistory={clearCmpHistory}
+      />
+
+      {/* ── Comparison Modal ── */}
+      <ComparisonModal
+        tray={cmpTray}
+        isOpen={cmpModalOpen}
+        onClose={closeCompareModal}
+        itemMap={itemMap}
+        requestItem={requestItem}
+        velocityMap={velocityMap}
+      />
 
       <footer className="footer">
         <p>
