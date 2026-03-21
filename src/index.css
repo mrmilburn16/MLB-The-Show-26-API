@@ -1968,3 +1968,155 @@ tr:hover .card-name-text:hover {
 .gh-empty-sub, .gh-idle-sub {
   font-size: 13px; color: #3a5a7a; max-width: 400px; line-height: 1.6;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   ── Card Detail Panel — Player Attributes & Item Data ──────── */
+
+/* ── Player Info Bar ── */
+.pinfo-bar {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  padding: 10px 0 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  margin-bottom: 14px;
+}
+.pinfo-chip {
+  display: flex; flex-direction: column; gap: 2px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px; padding: 6px 12px; min-width: 64px;
+}
+.pinfo-label {
+  font-size: 8px; letter-spacing: 1.5px; color: #4a6a8a;
+  text-transform: uppercase;
+}
+.pinfo-value {
+  font-size: 13px; font-weight: 700; color: #c8d6e5;
+  font-family: 'Space Mono', monospace;
+}
+
+/* ── Attribute Columns Layout ── */
+.attr-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+/* ── Attribute Group (Batting / Pitching / Fielding) ── */
+.attr-group {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.attr-group-title {
+  font-size: 9px; letter-spacing: 2px; font-weight: 700;
+  color: #3a5a7a; text-transform: uppercase;
+  margin-bottom: 4px; padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+/* ── Single Attribute Row ── */
+.attr-row {
+  display: grid;
+  grid-template-columns: 120px 28px 1fr;
+  align-items: center; gap: 8px;
+}
+.attr-label {
+  font-size: 11px; color: #7a9ab5;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.attr-val {
+  font-size: 12px; font-weight: 700;
+  font-family: 'Space Mono', monospace;
+  text-align: right;
+}
+.attr-bar-outer {
+  height: 5px; background: rgba(255,255,255,0.07);
+  border-radius: 3px; overflow: hidden;
+}
+.attr-bar-inner {
+  height: 100%; border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+/* ── Pitch Arsenal ── */
+.pitches-list {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.pitch-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px;
+}
+.pitch-name {
+  font-size: 12px; font-weight: 600; color: #c8d6e5;
+  min-width: 160px;
+}
+.pitch-attrs {
+  display: flex; align-items: center; gap: 16px; flex: 1;
+}
+.pitch-attr {
+  display: flex; align-items: center; gap: 6px;
+  min-width: 80px;
+}
+.pitch-attr-label {
+  font-size: 8px; letter-spacing: 1.5px; color: #4a6a8a;
+  text-transform: uppercase; flex-shrink: 0;
+}
+.pitch-attr-val {
+  font-size: 12px; font-weight: 700;
+  font-family: 'Space Mono', monospace; flex-shrink: 0;
+}
+.pitch-mini-bar-outer {
+  height: 4px; flex: 1; min-width: 40px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 2px; overflow: hidden;
+}
+.pitch-mini-bar-inner {
+  height: 100%; border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+/* ── Quirks Grid ── */
+.quirks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+.quirk-card {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 9px;
+}
+.quirk-icon {
+  width: 32px; height: 32px; object-fit: contain; flex-shrink: 0;
+  border-radius: 4px;
+}
+.quirk-info { flex: 1; min-width: 0; }
+.quirk-name {
+  font-size: 12px; font-weight: 700; color: #c8d6e5;
+  margin-bottom: 2px;
+}
+.quirk-desc {
+  font-size: 11px; color: #5a7a9a; line-height: 1.4;
+}
+
+/* ── Locations ── */
+.locations-list {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.location-chip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  background: rgba(77,166,255,0.08);
+  border: 1px solid rgba(77,166,255,0.18);
+  border-radius: 20px;
+}
+.location-icon {
+  width: 18px; height: 18px; object-fit: contain;
+}
+.location-name {
+  font-size: 11px; color: #7ab8e8;
+  font-family: 'Space Mono', monospace;
+}

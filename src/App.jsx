@@ -20,6 +20,7 @@ import { useAutoMarket }  from './hooks/useAutoMarket'
 import { useVelocity }    from './hooks/useVelocity'
 import { usePresets }     from './hooks/usePresets'
 import { useSnipeAlerts } from './hooks/useSnipeAlerts'
+import { useItemData }    from './hooks/useItemData'
 import { medianOf }       from './utils/snipe'
 import {
   DEFAULT_FILTERS, DEFAULT_ADV,
@@ -91,6 +92,7 @@ export default function App() {
   const error         = isMlbCard ? null                     : otherError
 
   const { velocityMap, pendingCount, requestUuid } = useVelocity()
+  const { itemMap, loadingUuid: itemLoadingUuid, requestItem } = useItemData()
 
   // ── Snipe alerts ──
   const {
@@ -194,7 +196,10 @@ export default function App() {
   // ── Card click ──
   function handleSelectCard(uuid) {
     setSelectedUuid(prev => prev === uuid ? null : uuid)
-    if (uuid) requestUuid(uuid)
+    if (uuid) {
+      requestUuid(uuid)
+      requestItem(uuid)
+    }
   }
 
   // ── Enrich active listings with velocity data ──
@@ -583,6 +588,8 @@ export default function App() {
                   listing={selectedListing}
                   velocityData={selectedVelocity}
                   velocityLoading={selectedVelLoading}
+                  itemData={selectedUuid ? itemMap[selectedUuid] : null}
+                  itemLoading={itemLoadingUuid === selectedUuid}
                   onClose={() => setSelectedUuid(null)}
                 />
               )}
