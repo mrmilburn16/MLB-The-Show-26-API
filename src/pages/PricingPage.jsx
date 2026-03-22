@@ -1,19 +1,19 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 
 // ── Tier definitions ───────────────────────────────────────────────
 
 const TIERS = [
   {
-    key:       'silver',
-    rarity:    'SILVER',
-    name:      'Silver',
-    color:     '#9aafc0',
-    glow:      '#7a8a9e',
-    badge:     'rgba(122,138,158,0.25)',
-    popular:   false,
-    price:     { monthly: 0,  annual: 0 },
-    cta:       'Get Started Free',
-    ctaStyle:  'outline',
+    key:      'free',
+    rarity:   'FREE',
+    name:     'Free',
+    color:    '#9aafc0',
+    glow:     '#7a8a9e',
+    badge:    'rgba(122,138,158,0.22)',
+    popular:  false,
+    price:    { monthly: 0, annual: 0 },
+    cta:      'Get Started',
+    ctaStyle: 'outline',
     included: [
       'Browse market listings (25 per page)',
       'Basic filters — rarity, position, team',
@@ -28,7 +28,8 @@ const TIERS = [
       'Snipe alerts with custom thresholds',
       'Auto-refresh every 60 seconds',
       'Advanced filters & ROI metrics',
-      'Saved filter presets',
+      'Card comparison tool',
+      'Bargain scanner',
     ],
   },
   {
@@ -40,49 +41,25 @@ const TIERS = [
     badge:    'rgba(255,214,68,0.2)',
     popular:  true,
     price:    { monthly: 5, annual: 40 },
-    cta:      'Start Flipping',
+    cta:      'Go Gold',
     ctaStyle: 'gold',
     included: [
-      'Everything in Silver',
+      'Everything in Free, plus:',
       'Full market scan — all 1,600+ cards',
       'Profit/min & sales velocity rankings',
       'Snipe alerts with custom thresholds',
       'Auto-refresh every 60 seconds',
-      '"New entry" highlighting on refresh',
+      '"New" entry highlighting on refresh',
       'Advanced filters — profit, ROI, spread',
       'Equipment & stadium flipping',
       'Near-quicksell deal finder',
       'Saved filter presets',
-    ],
-    locked: [
       'Card comparison tool',
       'Card finder by attributes',
       'Pitch arsenal viewer',
       'Bargain scanner',
-      'Roster update tracker',
-    ],
-  },
-  {
-    key:      'diamond',
-    rarity:   'DIAMOND',
-    name:     'Diamond',
-    color:    '#4da6ff',
-    glow:     '#6ab8ff',
-    badge:    'rgba(77,166,255,0.18)',
-    popular:  false,
-    price:    { monthly: 15, annual: 120 },
-    cta:      'Contact Us',
-    ctaStyle: 'blue',
-    included: [
-      'Everything in Gold',
-      'Card comparison tool (up to 3 cards)',
-      'Card finder by attribute thresholds',
-      'Pitch arsenal viewer & filters',
-      'Bargain scanner — multi-page sweep',
-      'Roster update tracker & flip alerts',
+      'Roster update tracker & alerts',
       'Flip queue with session tracker',
-      'Priority support',
-      'Early access to new features',
     ],
     locked: [],
   },
@@ -153,10 +130,9 @@ function FaqItem({ q, a }) {
 // ── Tier card ──────────────────────────────────────────────────────
 
 function TierCard({ tier, annual, idx, onCta }) {
-  const price      = annual ? tier.price.annual : tier.price.monthly
-  const perMo      = annual && price > 0 ? (price / 12).toFixed(2) : null
-  const isFree     = price === 0
-  const isContact  = tier.ctaStyle === 'blue'
+  const price  = annual ? tier.price.annual : tier.price.monthly
+  const perMo  = annual && price > 0 ? (price / 12).toFixed(2) : null
+  const isFree = price === 0
 
   return (
     <div
@@ -167,9 +143,9 @@ function TierCard({ tier, annual, idx, onCta }) {
         animationDelay: `${idx * 0.12}s`,
       }}
     >
-      {/* Popular badge */}
+      {/* Recommended badge */}
       {tier.popular && (
-        <div className="pr-popular-badge">MOST POPULAR</div>
+        <div className="pr-popular-badge">RECOMMENDED</div>
       )}
 
       {/* Top border accent */}
@@ -208,11 +184,6 @@ function TierCard({ tier, annual, idx, onCta }) {
         {/* CTA button */}
         <button
           className={`pr-cta-btn pr-cta-btn--${tier.ctaStyle}`}
-          style={tier.ctaStyle === 'gold'
-            ? { '--cta-color': tier.glow }
-            : tier.ctaStyle === 'blue'
-            ? { '--cta-color': tier.color }
-            : {}}
           onClick={() => onCta(tier)}
         >
           {tier.cta}
@@ -248,7 +219,7 @@ export default function PricingPage() {
     if (tier.price.monthly === 0) {
       window.location.href = '/'
     } else {
-      setToast(`${tier.name} plan — payment integration coming soon! Join the waitlist.`)
+      setToast('Gold plan — payment integration coming soon! Join the waitlist.')
     }
   }
 
