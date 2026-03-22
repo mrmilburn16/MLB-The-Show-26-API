@@ -136,18 +136,18 @@ function TierCard({ tier, annual, idx, onCta }) {
 
   return (
     <div
-      className={`pr-tier-card pr-tier-card--${tier.key} ${tier.popular ? 'pr-tier-card--popular' : ''}`}
-      style={{
-        '--tier-color': tier.color,
-        '--tier-glow':  tier.glow,
-        animationDelay: `${idx * 0.12}s`,
-      }}
+      className={`pr-tier-card-wrap ${tier.popular ? 'pr-tier-card-wrap--popular' : ''}`}
+      style={{ animationDelay: `${idx * 0.12}s` }}
     >
-      {/* Recommended badge */}
+      {/* Recommended badge — outside the card so it's never clipped */}
       {tier.popular && (
-        <div className="pr-popular-badge">RECOMMENDED</div>
+        <div className="pr-popular-badge">⭐ RECOMMENDED</div>
       )}
 
+      <div
+        className={`pr-tier-card pr-tier-card--${tier.key} ${tier.popular ? 'pr-tier-card--popular' : ''}`}
+        style={{ '--tier-color': tier.color, '--tier-glow': tier.glow }}
+      >
       {/* Top border accent */}
       <div className="pr-tier-top-bar" style={{ background: `linear-gradient(90deg, ${tier.glow}, transparent)` }} />
 
@@ -155,13 +155,16 @@ function TierCard({ tier, annual, idx, onCta }) {
         {/* Header */}
         <div className="pr-tier-header">
           <RarityBadge rarity={tier.rarity} color={tier.color} badge={tier.badge} />
-          <h2 className="pr-tier-name" style={{ color: tier.color }}>{tier.name}</h2>
         </div>
 
         {/* Price */}
         <div className="pr-tier-price">
           {isFree ? (
-            <span className="pr-price-free">Free</span>
+            <>
+              <span className="pr-price-currency">$</span>
+              <span className="pr-price-free">0</span>
+              <span className="pr-price-period">/mo</span>
+            </>
           ) : (
             <>
               <span className="pr-price-currency">$</span>
@@ -204,6 +207,7 @@ function TierCard({ tier, annual, idx, onCta }) {
             </li>
           ))}
         </ul>
+      </div>
       </div>
     </div>
   )
