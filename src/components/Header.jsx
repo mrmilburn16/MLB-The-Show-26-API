@@ -64,6 +64,15 @@ export default function Header({
           )}
         </div>
 
+        {/* ── Upgrade link ── */}
+        <a
+          href="/pricing"
+          className="header-upgrade-btn"
+          title="View Pro plans"
+        >
+          ⚡ Pro
+        </a>
+
         {/* ── Live / Paused indicator ── */}
         {showLive && togglePause && (
           <button
