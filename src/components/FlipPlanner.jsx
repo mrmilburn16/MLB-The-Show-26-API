@@ -30,7 +30,7 @@ function fmtNum(n, dec = 3) {
 
 // ── Candidate extraction (filtered + sorted) ───────────────────────
 
-function extractCandidates(allListings, velocityMap, minSalesPerMin) {
+function extractCandidates(allListings, velocityMap, minSalesPerMin, minRoi) {
   const out = []
   for (const l of allListings) {
     const buyPrice  = l.best_buy_price  || 0
@@ -39,6 +39,9 @@ function extractCandidates(allListings, velocityMap, minSalesPerMin) {
 
     const profit = profitAfterTax(sellPrice, buyPrice)
     if (profit <= 0) continue
+
+    const roi = (profit / buyPrice) * 100
+    if (roi < minRoi) continue
 
     const uuid = l.uuid || l.item?.uuid
     const vel  = uuid ? velocityMap[uuid] : null
@@ -58,6 +61,7 @@ function extractCandidates(allListings, velocityMap, minSalesPerMin) {
       buyPrice,
       sellPrice,
       profit,
+      roi,
       salesPerMin,
       profitPerMin,
     })
@@ -196,6 +200,11 @@ function PlanRow({ row, maxOrders, competitionFactor, onOrderChange, onRemove })
       <td className="fp-cell-num">{fmtStubs(row.buyPrice)}</td>
       <td className="fp-cell-num">{fmtStubs(row.sellPrice)}</td>
       <td className="fp-cell-num fp-col-profit">{fmtStubs(row.profit)}</td>
+      <td className="fp-cell-num fp-col-roi">
+        <span style={{ color: row.roi >= 15 ? '#4ade80' : row.roi >= 8 ? '#fbbf24' : '#fb923c' }}>
+          {row.roi != null ? row.roi.toFixed(1) : '—'}%
+        </span>
+      </td>
       <td className="fp-cell-num">{fmtNum(row.salesPerMin)}</td>
       <td className="fp-cell-orders">
         <div className="fp-orders-cell">
@@ -269,6 +278,7 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
   const [maxOrdersPerCard, setMaxOrdersPerCard] = useState(5)
   const [hoursPerDay,      setHoursPerDay]      = useState(3)
   const [competitionFactor, setCompetitionFactor] = useState(25)
+  const [minRoi,           setMinRoi]           = useState(5)
 
   // ── Candidates version — bump to force rebuild on button press ──
   const [version, setVersion] = useState(0)
@@ -288,15 +298,16 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
       if (s.maxOrdersPerCard) setMaxOrdersPerCard(s.maxOrdersPerCard)
       if (s.hoursPerDay)     setHoursPerDay(s.hoursPerDay)
       if (s.competitionFactor != null) setCompetitionFactor(s.competitionFactor)
+      if (s.minRoi           != null) setMinRoi(s.minRoi)
     } catch { /* ignore */ }
   }, [])
 
   // ── Candidates — filtered + sorted, recomputes on version bump ──
   const candidates = useMemo(() => {
     void version  // dependency: bump to force recompute
-    return extractCandidates(allListings, velocityMap, minSalesPerMin)
+    return extractCandidates(allListings, velocityMap, minSalesPerMin, minRoi)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allListings, velocityMap, minSalesPerMin, version])
+  }, [allListings, velocityMap, minSalesPerMin, minRoi, version])
 
   // ── Raw plan — fully reactive to budget slider and maxOrders slider ──
   const rawPlan = useMemo(() => {
@@ -371,7 +382,7 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
   function handleSave() {
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({
-        stubs, budgetPct, minSalesPerMin, maxOrdersPerCard, hoursPerDay, competitionFactor, ts: Date.now(),
+        stubs, budgetPct, minSalesPerMin, maxOrdersPerCard, hoursPerDay, competitionFactor, minRoi, ts: Date.now(),
       }))
     } catch { /* ignore */ }
   }
@@ -467,6 +478,28 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
             {[0, 0.05, 0.08, 0.15, 0.3, 0.5].map(v => (
               <button key={v} className={`fp-tick-btn ${minSalesPerMin === v ? 'fp-tick-btn--active' : ''}`}
                 onClick={() => setMinSalesPerMin(v)}>{v}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Min ROI % */}
+        <div className="fp-ctrl-group fp-ctrl-group--wide">
+          <label className="fp-ctrl-label">
+            MIN ROI %
+            <span className="fp-ctrl-value-inline fp-roi-pct">{minRoi}%</span>
+            <span className="fp-ctrl-sub">
+              profit ÷ buy price · filters out low-margin cards tying up capital
+            </span>
+          </label>
+          <input
+            type="range" min={0} max={30} step={1}
+            value={minRoi} className="fp-slider fp-slider--wide fp-slider--roi"
+            onChange={e => setMinRoi(Number(e.target.value))}
+          />
+          <div className="fp-slider-ticks">
+            {[0, 3, 5, 10, 15, 20].map(v => (
+              <button key={v} className={`fp-tick-btn ${minRoi === v ? 'fp-tick-btn--active' : ''}`}
+                onClick={() => setMinRoi(v)}>{v}%</button>
             ))}
           </div>
         </div>
@@ -600,6 +633,7 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
                     <th className="fp-th-num">Buy</th>
                     <th className="fp-th-num">Sell</th>
                     <th className="fp-th-num">Profit</th>
+                    <th className="fp-th-num">ROI %</th>
                     <th className="fp-th-num">Sales/Min</th>
                     <th className="fp-th-orders">Buy Orders</th>
                     <th className="fp-th-num">Stubs Tied</th>
