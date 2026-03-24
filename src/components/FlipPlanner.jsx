@@ -1,11 +1,20 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 
 // ── Constants ──────────────────────────────────────────────────────
-const MARKET_TAX        = 0.9          // 10% tax on sell
-// 20 combined buy+sell per card is the game limit; cap buy orders at 15 to leave ≥5 sell slots
+const MARKET_TAX        = 0.9   // 10% tax on sell
+// 20 combined buy+sell per card is the game limit (PER CARD — no total cap across cards).
+// Keeping ≥5 sell slots free means max 15 buy orders per card.
+// The OPTIMAL strategy is 3-5 buy orders per card spread across many cards, not 15 on a few.
 const MAX_ORDERS_HARD   = 15
-const SLOW_FILL_WARN_HR = 2            // warn if all orders take > 2 hrs to fill
-const LS_KEY            = 'fp_plan_v1'
+const SLOW_FILL_WARN_HR = 2     // warn if all orders take > 2 hrs to fill
+const LS_KEY            = 'fp_plan_v2'
+
+// Strategy presets — (ordersPerCard, label, description)
+const STRATEGIES = [
+  { orders: 3,  label: '🌊 Spread Wide', desc: 'Max cards, lowest risk per card', color: '#4ade80' },
+  { orders: 5,  label: '⚖️ Balanced',    desc: 'Good mix of breadth and depth',   color: '#4da6ff' },
+  { orders: 10, label: '🎯 Concentrate', desc: 'Fewer cards, more orders each',   color: '#fbbf24' },
+]
 
 const RARITY_ORDER = { Diamond: 0, Gold: 1, Silver: 2, Bronze: 3, Common: 4 }
 const RARITY_COLOR = {
@@ -248,7 +257,7 @@ function PlanRow({ row, maxOrders, onOrderChange, onRemove }) {
 export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
   // ── Inputs ──
   const [stubs,          setStubs]          = useState(90000)
-  const [defaultOrders,  setDefaultOrders]  = useState(5)
+  const [defaultOrders,  setDefaultOrders]  = useState(3)   // default: Spread Wide
   const [minBuyPrice,    setMinBuyPrice]    = useState(500)
   const [maxBuyPrice,    setMaxBuyPrice]    = useState(0)
   const [minProfit,      setMinProfit]      = useState(200)
@@ -381,9 +390,23 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
           />
         </label>
 
-        <label className="fp-input-group">
-          <span className="fp-input-label">DEFAULT ORDERS PER CARD</span>
-          <div className="fp-slider-inline">
+        <div className="fp-input-group fp-strategy-group">
+          <span className="fp-input-label">STRATEGY — BUY ORDERS PER CARD</span>
+          <div className="fp-strategy-btns">
+            {STRATEGIES.map(s => (
+              <button
+                key={s.orders}
+                className={`fp-strategy-btn ${defaultOrders === s.orders ? 'fp-strategy-btn--active' : ''}`}
+                style={defaultOrders === s.orders ? { borderColor: s.color, color: s.color } : {}}
+                onClick={() => setDefaultOrders(s.orders)}
+                title={s.desc}
+              >
+                {s.label}
+                <span className="fp-strategy-num">{s.orders} orders</span>
+              </button>
+            ))}
+          </div>
+          <div className="fp-slider-inline" style={{ marginTop: 6 }}>
             <input
               type="range" min={1} max={MAX_ORDERS_HARD}
               value={defaultOrders} className="fp-slider"
@@ -391,8 +414,15 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
             />
             <span className="fp-slider-val">{defaultOrders}</span>
           </div>
-          <span className="fp-input-hint">Max {MAX_ORDERS_HARD} buy per card · 20 combined buy+sell limit → keep ≥5 slots for sells</span>
-        </label>
+          <span className="fp-input-hint">
+            {defaultOrders} buy + up to {20 - defaultOrders} sell = 20 max per card ·
+            {defaultOrders <= 5
+              ? ' ✓ Recommended — spread across more cards'
+              : defaultOrders <= 10
+              ? ' Balanced'
+              : ' ⚠ High concentration — consider spreading wider'}
+          </span>
+        </div>
 
         <label className="fp-input-group">
           <span className="fp-input-label">MIN BUY PRICE</span>
@@ -462,12 +492,35 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
       {/* ── Per-card limit explainer ── */}
       <div className="fp-rule-note">
         <span className="fp-rule-icon">📐</span>
-        <span>
-          <strong>Game rule:</strong> max <strong>20 combined buy+sell orders per card</strong> — this limit is per card, not total.
-          With {defaultOrders} buy order{defaultOrders !== 1 ? 's' : ''} per card that leaves <strong>{20 - defaultOrders} sell slots</strong> on each card.
-          There is <strong>no total order cap</strong> across cards — spread across as many different cards as your stubs allow.
-          Fewer orders per card × more cards = faster throughput and lower risk.
-        </span>
+        <div className="fp-rule-body">
+          <div className="fp-rule-row">
+            <span className="fp-rule-chip fp-rule-chip--green">PER CARD</span>
+            Max <strong>20 combined buy+sell orders</strong> on any single card.
+            At {defaultOrders} buy orders, you have <strong>{20 - defaultOrders} sell slots</strong> remaining per card.
+          </div>
+          <div className="fp-rule-row">
+            <span className="fp-rule-chip fp-rule-chip--blue">NO TOTAL CAP</span>
+            You can flip <strong>unlimited different cards simultaneously</strong>.
+            There is no cap on how many cards you have orders on at once.
+          </div>
+          <div className="fp-rule-row">
+            <span className="fp-rule-chip fp-rule-chip--gold">STRATEGY</span>
+            <strong>Spread wide beats stacking.</strong>{' '}
+            With {stubs.toLocaleString()} stubs: {defaultOrders} orders/card means roughly{' '}
+            <strong>
+              {minBuyPrice > 0
+                ? `${Math.floor(stubs / (minBuyPrice * defaultOrders))}+ cards`
+                : 'many cards'}
+            </strong>{' '}
+            vs {MAX_ORDERS_HARD} orders/card ={' '}
+            <strong>
+              {minBuyPrice > 0
+                ? `~${Math.floor(stubs / (minBuyPrice * MAX_ORDERS_HARD))} cards`
+                : 'fewer cards'}
+            </strong>.
+            More cards = more parallel fills = higher total stubs/hour.
+          </div>
+        </div>
       </div>
 
       {/* ── Results ── */}
@@ -542,9 +595,10 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
           <div className="fp-idle-icon">📋</div>
           <p>Set your budget and filters above, then click <strong>Generate Plan</strong>.</p>
           <p className="fp-idle-sub">
-            The planner ranks cards by profit/min and spreads your stubs across as many cards as
-            possible — at most {MAX_ORDERS_HARD} buy orders per card (20 combined buy+sell game limit per card;
-            no cap across different cards).
+            The planner ranks cards by profit/min and spreads your stubs across as many cards as possible.
+            The <strong>game limit is 20 orders per card</strong> (buy + sell combined) — but there is{' '}
+            <strong>no limit across different cards</strong>. The default "Spread Wide" strategy uses
+            just 3 buy orders per card so your budget covers more cards simultaneously.
           </p>
         </div>
       )}

@@ -4846,16 +4846,48 @@ tr:hover .card-name-text:hover {
 .fp-gen-btn:hover:not(:disabled) { opacity: 0.9; transform: scale(1.02); }
 .fp-gen-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* ── Strategy buttons ── */
+.fp-strategy-group { grid-column: span 2; }
+.fp-strategy-btns {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;
+}
+.fp-strategy-btn {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: 8px 14px; border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #5a7a9a; font-family: 'Space Mono', monospace; font-size: 11px;
+  cursor: pointer; transition: border-color 0.2s, color 0.2s, background 0.2s;
+  text-align: left;
+}
+.fp-strategy-btn:hover { background: rgba(255,255,255,0.06); }
+.fp-strategy-btn--active { background: rgba(255,255,255,0.05); }
+.fp-strategy-num {
+  font-family: 'Orbitron', sans-serif; font-size: 9px; font-weight: 700;
+  letter-spacing: 1px; color: inherit; opacity: 0.7;
+}
+
 /* ── Rule note ── */
 .fp-rule-note {
-  display: flex; align-items: flex-start; gap: 12px;
-  background: rgba(77,166,255,0.06);
-  border: 1px solid rgba(77,166,255,0.15);
-  border-radius: 10px; padding: 14px 18px;
-  font-size: 12px; color: #5a8aaa; line-height: 1.6;
+  display: flex; align-items: flex-start; gap: 14px;
+  background: rgba(77,166,255,0.04);
+  border: 1px solid rgba(77,166,255,0.12);
+  border-radius: 10px; padding: 16px 20px;
+  font-size: 12px; color: #5a8aaa; line-height: 1.7;
 }
-.fp-rule-icon { font-size: 16px; flex-shrink: 0; }
+.fp-rule-icon { font-size: 18px; flex-shrink: 0; margin-top: 2px; }
+.fp-rule-body { display: flex; flex-direction: column; gap: 8px; }
+.fp-rule-row  { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .fp-rule-note strong { color: #8ab0cc; }
+
+.fp-rule-chip {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 8px; font-weight: 900; letter-spacing: 1.5px;
+  padding: 2px 7px; border-radius: 3px; flex-shrink: 0; white-space: nowrap;
+}
+.fp-rule-chip--green { background: rgba(74,222,128,0.12); color: #4ade80; }
+.fp-rule-chip--blue  { background: rgba(77,166,255,0.12); color: #4da6ff; }
+.fp-rule-chip--gold  { background: rgba(255,214,68,0.12); color: #ffd644; }
 
 /* ── Summary bar ── */
 .fp-summary {
