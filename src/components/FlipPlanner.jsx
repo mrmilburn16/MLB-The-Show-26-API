@@ -9,6 +9,44 @@ const MAX_BUY_HARD    = 15     // never suggest more than 15 buy orders per card
 //   (20 combined buy+sell per card is the game limit PER CARD — no total cap across cards)
 const LS_KEY          = 'fp_plan_v3'
 
+// ── Module-level velocity cache ────────────────────────────────────
+// Survives re-renders and tab switches; cleared only on page reload.
+const VEL_LS_KEY  = 'fp_vel_cache_v1'
+const VEL_TTL     = 60 * 60 * 1000  // 1 hour
+
+const velCache = new Map()  // uuid → { salesPerMin, profitPerMin, velocityWindow, savedAt, ... }
+
+function loadVelCacheFromLS() {
+  try {
+    const raw = localStorage.getItem(VEL_LS_KEY)
+    if (!raw) return
+    const entries = JSON.parse(raw)
+    const now = Date.now()
+    for (const [uuid, e] of Object.entries(entries)) {
+      if (e.savedAt && now - e.savedAt < VEL_TTL) velCache.set(uuid, e)
+    }
+  } catch { /* ignore */ }
+}
+
+function saveVelCacheToLS() {
+  try {
+    const obj = {}
+    for (const [uuid, e] of velCache.entries()) {
+      // Only persist computed values — raw arrays are too large for localStorage
+      obj[uuid] = {
+        salesPerMin:    e.salesPerMin,
+        profitPerMin:   e.profitPerMin,
+        velocityWindow: e.velocityWindow,
+        savedAt:        e.savedAt,
+      }
+    }
+    localStorage.setItem(VEL_LS_KEY, JSON.stringify(obj))
+  } catch { /* quota exceeded — silently skip */ }
+}
+
+// Load on module init (runs once when the JS module is first imported)
+loadVelCacheFromLS()
+
 const RARITY_COLOR = {
   Diamond: '#4da6ff', Gold: '#ffd644', Silver: '#9aafc0',
   Bronze: '#cd7f3a',  Common: '#7a8a6a',
@@ -295,8 +333,15 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
   const [scanTop,          setScanTop]          = useState(150)
   const [isScanning,       setIsScanning]       = useState(false)
   const [scanProgress,     setScanProgress]     = useState({ done: 0, total: 0 })
-  const [localVelocityMap, setLocalVelocityMap] = useState({})
-  const scanAbortRef = useRef(false)
+  const [localVelocityMap, setLocalVelocityMap] = useState(() => {
+    // Seed from any data already in the module-level cache (e.g. from a previous scan this session or from localStorage)
+    if (velCache.size === 0) return {}
+    const seed = {}
+    for (const [uuid, e] of velCache.entries()) seed[uuid] = e
+    return seed
+  })
+  const scanAbortRef    = useRef(false)
+  const scanStartRef    = useRef(null)   // Date.now() when current scan started
 
   // ── Candidates version — bump to force rebuild on button press ──
   const [version, setVersion] = useState(0)
@@ -411,77 +456,85 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
   const handleStartScan = useCallback(async () => {
     if (isScanning) return
     scanAbortRef.current = false
+    scanStartRef.current = Date.now()
     setIsScanning(true)
-    setLocalVelocityMap({})
 
-    // Sort allListings by raw profit descending, take top scanTop
-    const sorted = allListings
+    // Sort by raw profit descending, take top scanTop
+    const top = allListings
       .filter(l => l.best_buy_price > 0 && l.best_sell_price > 0)
-      .map(l => ({
-        ...l,
-        _rawProfit: Math.floor(l.best_sell_price * 0.9) - l.best_buy_price,
-      }))
+      .map(l => ({ ...l, _rawProfit: Math.floor(l.best_sell_price * 0.9) - l.best_buy_price }))
       .filter(l => l._rawProfit > 0)
       .sort((a, b) => b._rawProfit - a._rawProfit)
       .slice(0, scanTop)
 
-    const total = sorted.length
-    setScanProgress({ done: 0, total })
+    // Skip UUIDs already in the module-level cache — never re-fetch in the same session
+    const toFetch = top.filter(l => {
+      const uuid = l.uuid || l.item?.uuid
+      return uuid && !velCache.has(uuid)
+    })
 
-    let done = 0
+    const alreadyCached = top.length - toFetch.length
+    const total = top.length
+    let done = alreadyCached
+    setScanProgress({ done, total })
 
-    for (let i = 0; i < total && !scanAbortRef.current; i += 2) {
-      const batch = sorted.slice(i, i + 2)
+    if (toFetch.length === 0) {
+      setIsScanning(false)
+      return
+    }
+
+    // Fetch with 10s timeout; retry once after 1s on non-timeout errors
+    const fetchOne = async (uuid, attempt = 0) => {
+      const controller = new AbortController()
+      const tid = setTimeout(() => controller.abort(), 10_000)
+      try {
+        const res = await fetch(`${API_BASE}/listing.json?uuid=${uuid}`, { signal: controller.signal })
+        clearTimeout(tid)
+        if (res.status === 429 && attempt === 0) { await sleep(1000); return fetchOne(uuid, 1) }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return await res.json()
+      } catch (e) {
+        clearTimeout(tid)
+        if (e.name !== 'AbortError' && attempt === 0) { await sleep(1000); return fetchOne(uuid, 1) }
+        return null  // timeout or second failure — skip
+      }
+    }
+
+    for (let i = 0; i < toFetch.length && !scanAbortRef.current; i += 3) {
+      const batch = toFetch.slice(i, i + 3)
 
       await Promise.all(batch.map(async listing => {
         if (scanAbortRef.current) return
         const uuid = listing.uuid || listing.item?.uuid
         if (!uuid) { done++; setScanProgress({ done, total }); return }
 
-        // Fetch with one retry on any failure
-        const fetchDetail = async (attempt = 0) => {
-          try {
-            const res = await fetch(`${API_BASE}/listing.json?uuid=${uuid}`)
-            if (res.status === 429 && attempt === 0) {
-              await sleep(2000)
-              return fetchDetail(1)
-            }
-            if (!res.ok) throw new Error(`HTTP ${res.status}`)
-            return await res.json()
-          } catch {
-            if (attempt === 0) { await sleep(2000); return fetchDetail(1) }
-            return null
-          }
-        }
-
-        const data = await fetchDetail()
+        const data = await fetchOne(uuid)
         if (data && !scanAbortRef.current) {
           const sell = typeof data.best_sell_price === 'number' ? data.best_sell_price : null
           const buy  = typeof data.best_buy_price  === 'number' ? data.best_buy_price  : null
-          const pat  = sell != null && buy != null
-            ? Math.floor(sell * MARKET_TAX) - buy
-            : null
+          const pat  = sell != null && buy != null ? Math.floor(sell * MARKET_TAX) - buy : null
           const vel  = calcVelocity(data.completed_orders, pat)
-          setLocalVelocityMap(prev => ({
-            ...prev,
-            [uuid]: {
-              ...vel,
-              completedOrders: data.completed_orders || [],
-              priceHistory:    data.price_history    || [],
-            },
-          }))
+          const entry = {
+            ...vel,
+            completedOrders: data.completed_orders || [],
+            priceHistory:    data.price_history    || [],
+            savedAt: Date.now(),
+          }
+          velCache.set(uuid, entry)
+          setLocalVelocityMap(prev => ({ ...prev, [uuid]: entry }))
         }
 
         done++
         setScanProgress({ done, total })
       }))
 
-      if (i + 2 < total && !scanAbortRef.current) await sleep(400)
+      if (i + 3 < toFetch.length && !scanAbortRef.current) await sleep(200)
     }
 
+    saveVelCacheToLS()
     setIsScanning(false)
     scanAbortRef.current = false
-  // allListings and scanTop intentionally captured at call time — don't add to deps
+  // allListings and scanTop captured at call time
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isScanning, allListings, scanTop])
 
@@ -535,33 +588,44 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
           </div>
 
           {/* Scan progress / coverage */}
-          {isScanning ? (
-            <div className="fp-vel-coverage">
-              <div className="fp-vel-bar-wrap">
-                <div className="fp-vel-bar fp-vel-bar--scanning"
-                  style={{ width: scanProgress.total > 0 ? `${Math.round(scanProgress.done / scanProgress.total * 100)}%` : '0%' }} />
+          {isScanning ? (() => {
+            const pct = scanProgress.total > 0 ? Math.round(scanProgress.done / scanProgress.total * 100) : 0
+            const elapsed = scanStartRef.current ? Date.now() - scanStartRef.current : 0
+            const fetched = scanProgress.done - (scanProgress.total - (scanProgress.total - Object.keys(localVelocityMap).length))
+            const rate = elapsed > 0 && fetched > 0 ? fetched / elapsed : 0
+            const remaining = rate > 0 ? (scanProgress.total - scanProgress.done) / rate : 0
+            const eta = remaining > 0
+              ? remaining > 90000 ? `~${Math.ceil(remaining / 60000)}m remaining`
+              : `~${Math.ceil(remaining / 1000)}s remaining`
+              : ''
+            return (
+              <div className="fp-vel-coverage">
+                <div className="fp-vel-bar-wrap">
+                  <div className="fp-vel-bar fp-vel-bar--scanning" style={{ width: `${pct}%` }} />
+                </div>
+                <span className="fp-vel-label">
+                  Fetching: {scanProgress.done} / {scanProgress.total} cards ({pct}%)
+                  {eta && <span className="fp-eta"> · {eta}</span>}
+                </span>
               </div>
-              <span className="fp-vel-label">
-                Fetching velocity: {scanProgress.done} / {scanProgress.total} cards…
-              </span>
-            </div>
-          ) : scanProgress.total > 0 ? (
+            )
+          })() : scanProgress.total > 0 ? (
             <div className="fp-vel-coverage">
               <div className="fp-vel-bar-wrap">
                 <div className="fp-vel-bar" style={{ width: '100%' }} />
               </div>
               <span className="fp-vel-label">
-                Scan done — {scanProgress.done} / {scanProgress.total} cards fetched ·{' '}
-                {Object.keys(localVelocityMap).length} with velocity data
+                ✓ {Object.keys(localVelocityMap).length} cards with velocity · {scanProgress.done} / {scanProgress.total} processed
+                {velCache.size > scanProgress.total && ` · ${velCache.size} total cached`}
               </span>
             </div>
-          ) : velCoverage.total > 0 ? (
+          ) : velCoverage.covered > 0 ? (
             <div className="fp-vel-coverage">
               <div className="fp-vel-bar-wrap">
                 <div className="fp-vel-bar" style={{ width: `${velCoverage.pct}%` }} />
               </div>
               <span className="fp-vel-label">
-                Velocity cached: {velCoverage.covered} / {velCoverage.total} cards ({velCoverage.pct}%) · Run ▶ Scan for best results
+                {velCoverage.covered} cards with velocity · Run ▶ Scan for full results
               </span>
             </div>
           ) : null}

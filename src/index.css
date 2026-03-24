@@ -4870,6 +4870,7 @@ tr:hover .card-name-text:hover {
 .fp-scan-stop-btn:hover { background: rgba(248,113,113,0.2); }
 .fp-vel-bar--scanning { background: linear-gradient(90deg, #4ade80, #22c55e); animation: fp-scan-pulse 1.2s ease-in-out infinite alternate; }
 @keyframes fp-scan-pulse { from { opacity: 0.7; } to { opacity: 1; } }
+.fp-eta { color: #64748b; font-style: italic; }
 
 /* ── Controls panel ── */
 .fp-controls {
