@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import CopyableName from './CopyableName'
 
 // ── Constants ──────────────────────────────────────────────────────
 const MARKET_TAX      = 0.9    // 10% SDS market tax
@@ -180,8 +181,7 @@ function PlanRow({ row, maxOrders, onOrderChange, onRemove }) {
     <tr className="fp-row">
       <td className="fp-cell-name">
         <div className="fp-name">
-          {row.name}
-          <CopyBtn text={row.name} label="⎘" />
+          <CopyableName name={row.name} />
         </div>
         <div className="fp-meta">
           <RarityPip rarity={row.rarity} />
