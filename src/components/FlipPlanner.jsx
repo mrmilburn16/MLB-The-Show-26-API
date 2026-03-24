@@ -119,9 +119,9 @@ function buildPlan(candidates, budgetStubs, maxOrdersPerCard) {
 
 // ── Copy plan to clipboard ─────────────────────────────────────────
 
-function planToText(plan, stubs, budgetPct, totalProfitHr) {
+function planToText(plan, stubs, budgetPct, totalProfitHr, competitionFactor) {
   const lines = [
-    `Flip Plan — ${stubs.toLocaleString()} stubs (${budgetPct}% budget)`,
+    `Flip Plan — ${stubs.toLocaleString()} stubs (${budgetPct}% budget, ${competitionFactor}% competition factor)`,
     '',
     ...plan.map(r =>
       `${r.name} — Buy at ${r.buyPrice.toLocaleString()} × ${r.orders} order${r.orders !== 1 ? 's' : ''} (${(r.buyPrice * r.orders).toLocaleString()} stubs)`
@@ -171,9 +171,12 @@ function VelSupport({ orders, velocityCap, salesPerMin }) {
 
 // ── Plan row ──────────────────────────────────────────────────────
 
-function PlanRow({ row, maxOrders, onOrderChange, onRemove }) {
-  const stubsUsed    = row.buyPrice * row.orders
-  const fillsPerHour = row.salesPerMin ? Math.min(row.orders, Math.floor(row.salesPerMin * 60)) : null
+function PlanRow({ row, maxOrders, competitionFactor, onOrderChange, onRemove }) {
+  const stubsUsed       = row.buyPrice * row.orders
+  const totalFillsPerHr = row.salesPerMin ? row.salesPerMin * 60 : null
+  const fillsPerHour    = totalFillsPerHr != null
+    ? Math.min(totalFillsPerHr * (competitionFactor / 100), row.orders)
+    : null
   const profitPerHr  = fillsPerHour != null ? row.profit * fillsPerHour : null
   const rarityColor  = RARITY_COLOR[row.rarity] || '#9aafc0'
 
@@ -207,7 +210,7 @@ function PlanRow({ row, maxOrders, onOrderChange, onRemove }) {
       </td>
       <td className="fp-cell-num fp-col-tied">{fmtStubs(stubsUsed)}</td>
       <td className="fp-cell-num">
-        {fillsPerHour != null ? fillsPerHour : <span className="fp-dim">—</span>}
+        {fillsPerHour != null ? fillsPerHour.toFixed(1) : <span className="fp-dim">—</span>}
       </td>
       <td className="fp-cell-num fp-col-profhr">
         {profitPerHr != null ? fmtStubs(Math.round(profitPerHr)) : <span className="fp-dim">—</span>}
@@ -221,15 +224,16 @@ function PlanRow({ row, maxOrders, onOrderChange, onRemove }) {
 
 // ── Summary bar ───────────────────────────────────────────────────
 
-function SummaryBar({ plan, stubs, budgetPct, hoursPerDay }) {
+function SummaryBar({ plan, stubs, budgetPct, hoursPerDay, competitionFactor }) {
   const totalAllocated = plan.reduce((s, r) => s + r.buyPrice * r.orders, 0)
   const totalOrders    = plan.reduce((s, r) => s + r.orders, 0)
   const reserve        = stubs - totalAllocated
   const utilPct        = stubs > 0 ? Math.round(totalAllocated / stubs * 100) : 0
 
   const totalProfitHr = plan.reduce((s, r) => {
-    const fills = r.salesPerMin ? Math.min(r.orders, Math.floor(r.salesPerMin * 60)) : 0
-    return s + r.profit * fills
+    if (!r.salesPerMin) return s
+    const myFills = Math.min(r.salesPerMin * 60 * (competitionFactor / 100), r.orders)
+    return s + r.profit * myFills
   }, 0)
   const totalProfitDay = totalProfitHr * hoursPerDay
 
@@ -259,11 +263,12 @@ function SummaryBar({ plan, stubs, budgetPct, hoursPerDay }) {
 export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
 
   // ── Inputs ──
-  const [stubs,          setStubs]          = useState(90000)
-  const [budgetPct,      setBudgetPct]      = useState(90)
-  const [minSalesPerMin, setMinSalesPerMin] = useState(0.08)
+  const [stubs,            setStubs]            = useState(90000)
+  const [budgetPct,        setBudgetPct]        = useState(90)
+  const [minSalesPerMin,   setMinSalesPerMin]   = useState(0.08)
   const [maxOrdersPerCard, setMaxOrdersPerCard] = useState(5)
-  const [hoursPerDay,    setHoursPerDay]    = useState(3)
+  const [hoursPerDay,      setHoursPerDay]      = useState(3)
+  const [competitionFactor, setCompetitionFactor] = useState(25)
 
   // ── Candidates version — bump to force rebuild on button press ──
   const [version, setVersion] = useState(0)
@@ -282,6 +287,7 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
       if (s.minSalesPerMin != null) setMinSalesPerMin(s.minSalesPerMin)
       if (s.maxOrdersPerCard) setMaxOrdersPerCard(s.maxOrdersPerCard)
       if (s.hoursPerDay)     setHoursPerDay(s.hoursPerDay)
+      if (s.competitionFactor != null) setCompetitionFactor(s.competitionFactor)
     } catch { /* ignore */ }
   }, [])
 
@@ -320,8 +326,9 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
   // ── Totals ──
   const totalAllocated = plan.reduce((s, r) => s + r.buyPrice * r.orders, 0)
   const totalProfitHr  = plan.reduce((s, r) => {
-    const fills = r.salesPerMin ? Math.min(r.orders, Math.floor(r.salesPerMin * 60)) : 0
-    return s + r.profit * fills
+    if (!r.salesPerMin) return s
+    const myFills = Math.min(r.salesPerMin * 60 * (competitionFactor / 100), r.orders)
+    return s + r.profit * myFills
   }, 0)
 
   // ── Velocity coverage ──
@@ -364,12 +371,12 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
   function handleSave() {
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({
-        stubs, budgetPct, minSalesPerMin, maxOrdersPerCard, hoursPerDay, ts: Date.now(),
+        stubs, budgetPct, minSalesPerMin, maxOrdersPerCard, hoursPerDay, competitionFactor, ts: Date.now(),
       }))
     } catch { /* ignore */ }
   }
 
-  const copyText = planToText(visiblePlan, stubs, budgetPct, totalProfitHr)
+  const copyText = planToText(visiblePlan, stubs, budgetPct, totalProfitHr, competitionFactor)
   const dataReady = allListings.length > 0
 
   const budgetStubs = Math.floor(stubs * budgetPct / 100)
@@ -487,6 +494,33 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
           </div>
         </div>
 
+        {/* Competition factor */}
+        <div className="fp-ctrl-group fp-ctrl-group--wide">
+          <label className="fp-ctrl-label">
+            COMPETITION FACTOR — % of fills you expect to win
+            <span className="fp-ctrl-value-inline fp-comp-pct">{competitionFactor}%</span>
+            <span className="fp-ctrl-sub">
+              {competitionFactor === 100
+                ? 'No competition (unrealistic)'
+                : competitionFactor >= 75 ? 'Low competition — quiet market'
+                : competitionFactor >= 40 ? 'Moderate competition'
+                : competitionFactor >= 20 ? 'High competition — realistic for popular cards'
+                : 'Very high competition — saturated market'}
+            </span>
+          </label>
+          <input
+            type="range" min={10} max={100} step={5}
+            value={competitionFactor} className="fp-slider fp-slider--wide fp-slider--comp"
+            onChange={e => setCompetitionFactor(Number(e.target.value))}
+          />
+          <div className="fp-slider-ticks">
+            {[10, 25, 50, 75, 100].map(v => (
+              <button key={v} className={`fp-tick-btn ${competitionFactor === v ? 'fp-tick-btn--active' : ''}`}
+                onClick={() => setCompetitionFactor(v)}>{v}%</button>
+            ))}
+          </div>
+        </div>
+
         {/* Hours per day */}
         <div className="fp-ctrl-group">
           <label className="fp-ctrl-label">HOURS / DAY FLIPPING</label>
@@ -542,6 +576,7 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
             stubs={stubs}
             budgetPct={budgetPct}
             hoursPerDay={hoursPerDay}
+            competitionFactor={competitionFactor}
           />
 
           {/* Table toolbar */}
@@ -579,6 +614,7 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
                       key={row.uuid}
                       row={row}
                       maxOrders={maxOrdersPerCard}
+                      competitionFactor={competitionFactor}
                       onOrderChange={handleOrderChange}
                       onRemove={handleRemove}
                     />

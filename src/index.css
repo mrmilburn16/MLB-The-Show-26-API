@@ -4865,6 +4865,8 @@ tr:hover .card-name-text:hover {
   color: #c8d6e5; margin-left: 4px;
 }
 .fp-budget-pct { color: #4da6ff !important; font-size: 15px !important; }
+.fp-comp-pct   { color: #fb923c !important; font-size: 15px !important; }
+.fp-slider--comp { accent-color: #fb923c; }
 .fp-ctrl-sub {
   display: block; font-family: 'Space Mono', monospace;
   font-size: 9px; letter-spacing: 0.5px; color: #3a5a6a;
