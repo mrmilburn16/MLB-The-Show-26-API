@@ -1,43 +1,51 @@
 export const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 
 /**
- * Calculate sales per minute using the FULL window of completed orders.
+ * Calculate sales per minute using a windowed approach:
+ *   - Primary:  last 1 hour  (needs ≥ 3 orders) — most accurate for hot cards
+ *   - Fallback: last 24 hours (needs ≥ 1 order)  — covers medium-velocity cards
+ *   - Zero if no sales in the last 24 hours
  *
- * Formula: count / (newest_ts - oldest_ts) in minutes
- * Requires at least 2 orders with parseable dates to produce a non-zero rate.
- *
- * Example: 180 orders spanning 1,161 min → 0.155 sales/min
+ * Returns { rate, window } where window is '1h', '24h', or null.
  */
 export function calcSalesPerMinute(completedOrders) {
-  if (!completedOrders || completedOrders.length < 2) return 0
+  if (!completedOrders || completedOrders.length < 1) return { rate: 0, window: null }
 
-  const times = completedOrders
+  const now              = Date.now()
+  const oneHourAgo       = now - 60 * 60 * 1000
+  const twentyFourHrsAgo = now - 24 * 60 * 60 * 1000
+
+  const allTimes = completedOrders
     .map(o => new Date(o.date).getTime())
     .filter(t => Number.isFinite(t))
 
-  if (times.length < 2) return 0
+  // Primary: 1-hour window (≥ 3 orders required for a stable rate)
+  const lastHour = allTimes.filter(t => t >= oneHourAgo)
+  if (lastHour.length >= 3) {
+    return { rate: lastHour.length / 60, window: '1h' }
+  }
 
-  const newest = Math.max(...times)
-  const oldest = Math.min(...times)
-  const minutesSpan = (newest - oldest) / 60_000
+  // Fallback: 24-hour window
+  const last24h = allTimes.filter(t => t >= twentyFourHrsAgo)
+  if (last24h.length >= 1) {
+    return { rate: last24h.length / 1440, window: '24h' }
+  }
 
-  if (minutesSpan <= 0) return 0
-  return times.length / minutesSpan
+  return { rate: 0, window: null }
 }
 
 /**
- * Compute { salesPerMin, profitPerMin } for a listing.
+ * Compute { salesPerMin, profitPerMin, velocityWindow } for a listing.
  *
- * profitPerMin = profitAfterTax × salesPerMin
- * Only positive when both profit and velocity are positive.
+ * velocityWindow: '1h' | '24h' | null — which time window was used.
  */
 export function calcVelocity(completedOrders, profitAfterTax, listingName) {
-  const salesPerMin = calcSalesPerMinute(completedOrders)
+  const { rate: salesPerMin, window: velocityWindow } = calcSalesPerMinute(completedOrders)
 
   const profitPerMin =
     profitAfterTax != null && profitAfterTax > 0 && salesPerMin > 0
       ? profitAfterTax * salesPerMin
       : 0
 
-  return { salesPerMin, profitPerMin }
+  return { salesPerMin, profitPerMin, velocityWindow }
 }

@@ -24,7 +24,7 @@ function computeAllMetrics(listing, detail, avgMethod) {
 
   // ── Flip metrics ───────────────────────────────────────────
   const profitAfterTax = Math.floor(bestSell * (1 - MARKET_TAX)) - bestBuy
-  const salesPerMin    = calcSalesPerMinute(orders)
+  const { rate: salesPerMin } = calcSalesPerMinute(orders)
   const profitPerMin   = profitAfterTax > 0 && salesPerMin > 0
     ? profitAfterTax * salesPerMin
     : 0

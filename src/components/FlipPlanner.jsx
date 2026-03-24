@@ -47,8 +47,9 @@ function extractCandidates(allListings, velocityMap, minSalesPerMin, minRoi) {
     const vel  = uuid ? velocityMap[uuid] : null
     if (!vel?.salesPerMin || vel.salesPerMin <= 0) continue   // must have velocity data
 
-    const salesPerMin  = vel.salesPerMin
-    const profitPerMin = vel.profitPerMin ?? (profit * salesPerMin)
+    const salesPerMin    = vel.salesPerMin
+    const profitPerMin   = vel.profitPerMin ?? (profit * salesPerMin)
+    const velocityWindow = vel.velocityWindow ?? null
 
     if (salesPerMin < minSalesPerMin) continue
 
@@ -64,6 +65,7 @@ function extractCandidates(allListings, velocityMap, minSalesPerMin, minRoi) {
       roi,
       salesPerMin,
       profitPerMin,
+      velocityWindow,
     })
   }
 
@@ -205,7 +207,14 @@ function PlanRow({ row, maxOrders, competitionFactor, onOrderChange, onRemove })
           {row.roi != null ? row.roi.toFixed(1) : '—'}%
         </span>
       </td>
-      <td className="fp-cell-num">{fmtNum(row.salesPerMin)}</td>
+      <td className="fp-cell-num">
+        {fmtNum(row.salesPerMin)}
+        {row.velocityWindow && (
+          <span className={`fp-vel-window fp-vel-window--${row.velocityWindow === '1h' ? 'fresh' : 'stale'}`}>
+            {row.velocityWindow}
+          </span>
+        )}
+      </td>
       <td className="fp-cell-orders">
         <div className="fp-orders-cell">
           <input
