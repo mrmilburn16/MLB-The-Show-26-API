@@ -9,6 +9,7 @@ const TABS = [
   { key: 'gamehistory',  label: '📜 Game History',     hint: 'Look up any player\'s recent Diamond Dynasty game log' },
   { key: 'pennystocks',  label: '💰 Penny Stocks',     hint: 'Ultra-cheap cards near quicksell value — bulk exchange fodder or roster update lottery tickets' },
   { key: 'flipplanner', label: '📋 Flip Planner',     hint: 'Optimize your stub allocation across cards — respects the 20-order-per-card game limit' },
+  { key: 'captains',    label: '⚓ Captains',          hint: 'Browse all captains, filter by boost attribute, and find the cheapest qualifying squad' },
 ]
 
 export default function TabBar({ activeTab, onTabChange, alertCount = 0 }) {

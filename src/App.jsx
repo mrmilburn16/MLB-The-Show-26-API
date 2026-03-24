@@ -20,6 +20,7 @@ import CardFinder            from './components/CardFinder'
 import CollectionTracker    from './components/CollectionTracker'
 import RosterUpdates        from './components/RosterUpdates'
 import FlipPlanner          from './components/FlipPlanner'
+import CaptainsBrowser      from './components/CaptainsBrowser'
 import ComparisonTray    from './components/ComparisonTray'
 import ComparisonModal   from './components/ComparisonModal'
 import { useListings }    from './hooks/useListings'
@@ -490,7 +491,7 @@ export default function App() {
 
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} alertCount={snipeAlerts.length} />
 
-      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && activeTab !== 'collections' && activeTab !== 'rosterupdates' && activeTab !== 'snipealerts' && activeTab !== 'pennystocks' && activeTab !== 'flipplanner' && (
+      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && activeTab !== 'collections' && activeTab !== 'rosterupdates' && activeTab !== 'snipealerts' && activeTab !== 'pennystocks' && activeTab !== 'flipplanner' && activeTab !== 'captains' && (
         <PresetBar
           presets={presets}
           activeId={activePresetId}
@@ -504,7 +505,7 @@ export default function App() {
         />
       )}
 
-      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && activeTab !== 'collections' && activeTab !== 'rosterupdates' && activeTab !== 'snipealerts' && activeTab !== 'pennystocks' && activeTab !== 'flipplanner' && (
+      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && activeTab !== 'collections' && activeTab !== 'rosterupdates' && activeTab !== 'snipealerts' && activeTab !== 'pennystocks' && activeTab !== 'flipplanner' && activeTab !== 'captains' && (
         <FiltersBar
           filters={filters}
           onFilterChange={handleFilterChange}
@@ -583,6 +584,12 @@ export default function App() {
             allListings={autoMarket.allListings}
             velocityMap={velocityMap}
           />
+        </main>
+      )}
+
+      {activeTab === 'captains' && (
+        <main className="main">
+          <CaptainsBrowser allListings={autoMarket.allListings} />
         </main>
       )}
 
