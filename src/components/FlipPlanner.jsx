@@ -1,5 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import CopyableName from './CopyableName'
+import { API_BASE } from '../constants'
+import { calcVelocity, sleep } from '../utils/velocity'
 
 // ── Constants ──────────────────────────────────────────────────────
 const MARKET_TAX      = 0.9    // 10% SDS market tax
@@ -289,6 +291,13 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
   const [competitionFactor, setCompetitionFactor] = useState(25)
   const [minRoi,           setMinRoi]           = useState(5)
 
+  // ── Velocity scan (self-contained, targets top-N by profit) ──
+  const [scanTop,          setScanTop]          = useState(150)
+  const [isScanning,       setIsScanning]       = useState(false)
+  const [scanProgress,     setScanProgress]     = useState({ done: 0, total: 0 })
+  const [localVelocityMap, setLocalVelocityMap] = useState({})
+  const scanAbortRef = useRef(false)
+
   // ── Candidates version — bump to force rebuild on button press ──
   const [version, setVersion] = useState(0)
 
@@ -311,12 +320,18 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
     } catch { /* ignore */ }
   }, [])
 
+  // ── Merge: local scan data takes priority over global lazy map ──
+  const mergedVelocityMap = useMemo(() => ({
+    ...velocityMap,
+    ...localVelocityMap,
+  }), [velocityMap, localVelocityMap])
+
   // ── Candidates — filtered + sorted, recomputes on version bump ──
   const candidates = useMemo(() => {
     void version  // dependency: bump to force recompute
-    return extractCandidates(allListings, velocityMap, minSalesPerMin, minRoi)
+    return extractCandidates(allListings, mergedVelocityMap, minSalesPerMin, minRoi)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allListings, velocityMap, minSalesPerMin, minRoi, version])
+  }, [allListings, mergedVelocityMap, minSalesPerMin, minRoi, version])
 
   // ── Raw plan — fully reactive to budget slider and maxOrders slider ──
   const rawPlan = useMemo(() => {
@@ -356,10 +371,10 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
     const total   = allListings.length
     const covered = allListings.filter(l => {
       const uuid = l.uuid || l.item?.uuid
-      return uuid && velocityMap[uuid]?.salesPerMin > 0
+      return uuid && mergedVelocityMap[uuid]?.salesPerMin > 0
     }).length
     return { total, covered, pct: total > 0 ? Math.round(covered / total * 100) : 0 }
-  }, [allListings, velocityMap])
+  }, [allListings, mergedVelocityMap])
 
   // ── Handlers ──
   const handleOrderChange = useCallback((uuid, v) => {
@@ -388,6 +403,88 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
     setRemovedUuids(new Set())
   }
 
+  // ── Velocity scan ──────────────────────────────────────────────────
+  const handleStopScan = useCallback(() => {
+    scanAbortRef.current = true
+  }, [])
+
+  const handleStartScan = useCallback(async () => {
+    if (isScanning) return
+    scanAbortRef.current = false
+    setIsScanning(true)
+    setLocalVelocityMap({})
+
+    // Sort allListings by raw profit descending, take top scanTop
+    const sorted = allListings
+      .filter(l => l.best_buy_price > 0 && l.best_sell_price > 0)
+      .map(l => ({
+        ...l,
+        _rawProfit: Math.floor(l.best_sell_price * 0.9) - l.best_buy_price,
+      }))
+      .filter(l => l._rawProfit > 0)
+      .sort((a, b) => b._rawProfit - a._rawProfit)
+      .slice(0, scanTop)
+
+    const total = sorted.length
+    setScanProgress({ done: 0, total })
+
+    let done = 0
+
+    for (let i = 0; i < total && !scanAbortRef.current; i += 2) {
+      const batch = sorted.slice(i, i + 2)
+
+      await Promise.all(batch.map(async listing => {
+        if (scanAbortRef.current) return
+        const uuid = listing.uuid || listing.item?.uuid
+        if (!uuid) { done++; setScanProgress({ done, total }); return }
+
+        // Fetch with one retry on any failure
+        const fetchDetail = async (attempt = 0) => {
+          try {
+            const res = await fetch(`${API_BASE}/listing.json?uuid=${uuid}`)
+            if (res.status === 429 && attempt === 0) {
+              await sleep(2000)
+              return fetchDetail(1)
+            }
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+            return await res.json()
+          } catch {
+            if (attempt === 0) { await sleep(2000); return fetchDetail(1) }
+            return null
+          }
+        }
+
+        const data = await fetchDetail()
+        if (data && !scanAbortRef.current) {
+          const sell = typeof data.best_sell_price === 'number' ? data.best_sell_price : null
+          const buy  = typeof data.best_buy_price  === 'number' ? data.best_buy_price  : null
+          const pat  = sell != null && buy != null
+            ? Math.floor(sell * MARKET_TAX) - buy
+            : null
+          const vel  = calcVelocity(data.completed_orders, pat)
+          setLocalVelocityMap(prev => ({
+            ...prev,
+            [uuid]: {
+              ...vel,
+              completedOrders: data.completed_orders || [],
+              priceHistory:    data.price_history    || [],
+            },
+          }))
+        }
+
+        done++
+        setScanProgress({ done, total })
+      }))
+
+      if (i + 2 < total && !scanAbortRef.current) await sleep(400)
+    }
+
+    setIsScanning(false)
+    scanAbortRef.current = false
+  // allListings and scanTop intentionally captured at call time — don't add to deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScanning, allListings, scanTop])
+
   function handleSave() {
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({
@@ -414,16 +511,61 @@ export default function FlipPlanner({ allListings = [], velocityMap = {} }) {
           </p>
         </div>
         <div className="fp-header-right">
-          {velCoverage.total > 0 && (
+
+          {/* Scan controls */}
+          <div className="fp-scan-controls">
+            <span className="fp-scan-label">Scan top:</span>
+            {[50, 100, 150, 200].map(n => (
+              <button
+                key={n}
+                className={`fp-scan-n-btn ${scanTop === n ? 'fp-scan-n-btn--active' : ''}`}
+                onClick={() => setScanTop(n)}
+                disabled={isScanning}
+              >{n}</button>
+            ))}
+            {isScanning ? (
+              <button className="fp-scan-stop-btn" onClick={handleStopScan}>■ Stop</button>
+            ) : (
+              <button
+                className="fp-scan-start-btn"
+                onClick={handleStartScan}
+                disabled={!dataReady}
+              >▶ Scan</button>
+            )}
+          </div>
+
+          {/* Scan progress / coverage */}
+          {isScanning ? (
+            <div className="fp-vel-coverage">
+              <div className="fp-vel-bar-wrap">
+                <div className="fp-vel-bar fp-vel-bar--scanning"
+                  style={{ width: scanProgress.total > 0 ? `${Math.round(scanProgress.done / scanProgress.total * 100)}%` : '0%' }} />
+              </div>
+              <span className="fp-vel-label">
+                Fetching velocity: {scanProgress.done} / {scanProgress.total} cards…
+              </span>
+            </div>
+          ) : scanProgress.total > 0 ? (
+            <div className="fp-vel-coverage">
+              <div className="fp-vel-bar-wrap">
+                <div className="fp-vel-bar" style={{ width: '100%' }} />
+              </div>
+              <span className="fp-vel-label">
+                Scan done — {scanProgress.done} / {scanProgress.total} cards fetched ·{' '}
+                {Object.keys(localVelocityMap).length} with velocity data
+              </span>
+            </div>
+          ) : velCoverage.total > 0 ? (
             <div className="fp-vel-coverage">
               <div className="fp-vel-bar-wrap">
                 <div className="fp-vel-bar" style={{ width: `${velCoverage.pct}%` }} />
               </div>
               <span className="fp-vel-label">
-                Velocity data: {velCoverage.covered.toLocaleString()} / {velCoverage.total.toLocaleString()} cards ({velCoverage.pct}%)
+                Velocity cached: {velCoverage.covered} / {velCoverage.total} cards ({velCoverage.pct}%) · Run ▶ Scan for best results
               </span>
             </div>
-          )}
+          ) : null}
+
           <button
             className="fp-rebuild-btn"
             onClick={handleRebuild}
