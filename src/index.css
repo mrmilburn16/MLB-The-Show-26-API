@@ -2798,6 +2798,33 @@ tr:hover .card-name-text:hover {
 .cf-select:focus, .cf-num-input:focus { border-color: rgba(77,166,255,0.45); }
 .cf-num-input::-webkit-inner-spin-button { opacity: 0.4; }
 
+/* Bats / Throws button groups */
+.cf-hand-row {
+  display: flex; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;
+}
+.cf-btn-group {
+  display: flex; gap: 0;
+  border: 1px solid rgba(77,166,255,0.15); border-radius: 6px; overflow: hidden;
+}
+.cf-hand-btn {
+  flex: 1; padding: 5px 10px; background: rgba(0,0,0,0.35);
+  border: none; border-right: 1px solid rgba(77,166,255,0.1);
+  color: #5a7a9a; font-family: 'Space Mono', monospace; font-size: 11px;
+  cursor: pointer; transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.cf-hand-btn:last-child { border-right: none; }
+.cf-hand-btn:hover { background: rgba(77,166,255,0.08); color: #8ab0cc; }
+.cf-hand-btn--active {
+  background: rgba(77,166,255,0.18); color: #4da6ff; font-weight: 700;
+}
+.cf-hand-btn--switch.cf-hand-btn--active {
+  background: rgba(255,214,68,0.15); color: #ffd644;
+}
+.cf-switch-note {
+  font-size: 10px; color: #a07a20; margin-top: 3px; letter-spacing: 0.3px;
+}
+
 /* Attribute input grid (2-col) */
 .cf-attr-grid {
   display: grid;

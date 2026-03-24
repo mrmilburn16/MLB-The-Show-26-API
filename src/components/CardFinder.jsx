@@ -352,23 +352,34 @@ export default function CardFinder({ allListings }) {
               </div>
             </div>
 
-            <div className="cf-field-row">
+            <div className="cf-hand-row">
               <div className="cf-field">
                 <label className="cf-field-label">Bats</label>
-                <select className="cf-select" value={filters.batHand} onChange={e => setF('batHand', e.target.value)}>
-                  <option value="">Any</option>
-                  <option value="L">Left</option>
-                  <option value="R">Right</option>
-                  <option value="S">Switch</option>
-                </select>
+                <div className="cf-btn-group">
+                  {[['', 'All'], ['L', 'L'], ['R', 'R'], ['S', 'S ⚡']].map(([val, lbl]) => (
+                    <button
+                      key={val}
+                      className={`cf-hand-btn ${filters.batHand === val ? 'cf-hand-btn--active' : ''} ${val === 'S' ? 'cf-hand-btn--switch' : ''}`}
+                      onClick={() => setF('batHand', val)}
+                      title={val === 'S' ? 'Switch hitters — always have platoon advantage' : ''}
+                    >{lbl}</button>
+                  ))}
+                </div>
+                {filters.batHand === 'S' && (
+                  <div className="cf-switch-note">⚡ Switch hitters always bat from the stronger side</div>
+                )}
               </div>
               <div className="cf-field">
                 <label className="cf-field-label">Throws</label>
-                <select className="cf-select" value={filters.throwHand} onChange={e => setF('throwHand', e.target.value)}>
-                  <option value="">Any</option>
-                  <option value="L">Left</option>
-                  <option value="R">Right</option>
-                </select>
+                <div className="cf-btn-group">
+                  {[['', 'All'], ['L', 'L'], ['R', 'R']].map(([val, lbl]) => (
+                    <button
+                      key={val}
+                      className={`cf-hand-btn ${filters.throwHand === val ? 'cf-hand-btn--active' : ''}`}
+                      onClick={() => setF('throwHand', val)}
+                    >{lbl}</button>
+                  ))}
+                </div>
               </div>
             </div>
           </FilterSection>
