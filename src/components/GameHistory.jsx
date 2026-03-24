@@ -15,8 +15,10 @@ const MODES = [
   { label: 'Exhibition',       value: 'exhibition' },
 ]
 
-const LS_USERNAME = 'gh_username'
-const LS_PLATFORM = 'gh_platform'
+const LS_USERNAME    = 'gh_username'
+const LS_PLATFORM    = 'gh_platform'
+const LS_MY_GAMERTAG = 'gh_my_gamertag'
+const LS_FRIENDS     = 'gh_friend_tags'
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -25,15 +27,27 @@ function cleanTag(str) {
   return (str || '').replace(/\^[a-zA-Z]\d*\^/g, '').trim()
 }
 
-/** Determine which side (home|away|null) the searched user is on */
-function getUserSide(game, username) {
-  const cleanHome = cleanTag(game.home_name)
-  const cleanAway = cleanTag(game.away_name)
-  const user = username.toLowerCase()
-  if (cleanHome.toLowerCase() === user) return 'home'
-  if (cleanAway.toLowerCase() === user) return 'away'
-  if (cleanHome.toLowerCase().includes(user)) return 'home'
-  if (cleanAway.toLowerCase().includes(user)) return 'away'
+/**
+ * Determine which side (home|away|null) the user is on.
+ * Checks the searched gamertag AND any co-op friend tags against home_name / away_name.
+ * Also handles CPU opponents as a fallback.
+ */
+function getUserSide(game, myGamertag, friendTags = []) {
+  const allTags = [myGamertag, ...friendTags]
+  const clean = str => (str || '').replace(/\^[a-z]\d+\^/g, '').trim().toLowerCase()
+  const homeName = clean(game.home_name)
+  const awayName = clean(game.away_name)
+
+  for (const tag of allTags) {
+    const t = (tag || '').toLowerCase().trim()
+    if (!t) continue
+    if (homeName.includes(t) || t.includes(homeName)) return 'home'
+    if (awayName.includes(t) || t.includes(awayName)) return 'away'
+  }
+
+  if (homeName === 'cpu') return 'away'
+  if (awayName === 'cpu') return 'home'
+
   return null
 }
 
@@ -167,8 +181,17 @@ function GameRow({ row }) {
 // ── Main Component ───────────────────────────────────────────────
 
 export default function GameHistory() {
+  // ── My Players settings ──
+  const [myGamertag,   setMyGamertag]   = useState(() => localStorage.getItem(LS_MY_GAMERTAG) || '')
+  const [friendTags,   setFriendTags]   = useState(() => {
+    try { return JSON.parse(localStorage.getItem(LS_FRIENDS) || '[]') } catch { return [] }
+  })
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [friendInput,  setFriendInput]  = useState('')
+
+  // ── Search state ──
   const [username, setUsername] = useState(
-    () => localStorage.getItem(LS_USERNAME) || ''
+    () => localStorage.getItem(LS_MY_GAMERTAG) || localStorage.getItem(LS_USERNAME) || ''
   )
   const [platform, setPlatform] = useState(
     () => localStorage.getItem(LS_PLATFORM) || 'psn'
@@ -179,11 +202,28 @@ export default function GameHistory() {
   const [totalPages, setTotalPages] = useState(1)
   const [loading,    setLoading]    = useState(false)
   const [error,      setError]      = useState(null)
-  const [searched,   setSearched]   = useState('')  // the username that produced current results
+  const [searched,   setSearched]   = useState('')
 
-  // Persist search inputs
-  useEffect(() => { localStorage.setItem(LS_USERNAME, username) }, [username])
+  // Persist settings
+  useEffect(() => { localStorage.setItem(LS_MY_GAMERTAG, myGamertag) }, [myGamertag])
+  useEffect(() => { localStorage.setItem(LS_FRIENDS, JSON.stringify(friendTags)) }, [friendTags])
   useEffect(() => { localStorage.setItem(LS_PLATFORM, platform) }, [platform])
+
+  // Auto-fill the search field when My Gamertag is saved
+  useEffect(() => {
+    if (myGamertag) setUsername(myGamertag)
+  }, [myGamertag])
+
+  // Friends helpers
+  function addFriend() {
+    const t = friendInput.trim()
+    if (!t || friendTags.includes(t)) return
+    setFriendTags(prev => [...prev, t])
+    setFriendInput('')
+  }
+  function removeFriend(tag) {
+    setFriendTags(prev => prev.filter(f => f !== tag))
+  }
 
   const fetchGames = useCallback(async (user, plat, mod, pg) => {
     if (!user.trim()) return
@@ -199,7 +239,8 @@ export default function GameHistory() {
       const res  = await fetch(`${API_BASE}/game_history.json?${params}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      setGames(data.game_history || data.games || [])
+      const gameList = data.game_history || data.games || []
+      setGames(gameList)
       setTotalPages(data.total_pages || 1)
       setSearched(user.trim())
     } catch (e) {
@@ -227,7 +268,7 @@ export default function GameHistory() {
     if (!games.length || !searched) return []
 
     return games.map(g => {
-      const side = getUserSide(g, searched)
+      const side = getUserSide(g, searched, friendTags)
 
       const isHome   = side === 'home'
       const isAway   = side === 'away'
@@ -273,7 +314,7 @@ export default function GameHistory() {
         side,
       }
     })
-  }, [games, searched])
+  }, [games, searched, friendTags])
 
   const stats = useMemo(() => computeStats(rows), [rows])
 
@@ -281,6 +322,86 @@ export default function GameHistory() {
 
   return (
     <div className="gh-wrap">
+
+      {/* ── My Players settings panel ── */}
+      <div className="gh-settings-bar">
+        <button
+          type="button"
+          className={`gh-settings-toggle${settingsOpen ? ' gh-settings-toggle--open' : ''}`}
+          onClick={() => setSettingsOpen(o => !o)}
+        >
+          ⚙ My Players
+          {(myGamertag || friendTags.length > 0) && (
+            <span className="gh-settings-badge">
+              {[myGamertag, ...friendTags].filter(Boolean).length}
+            </span>
+          )}
+        </button>
+
+        {settingsOpen && (
+          <div className="gh-settings-panel">
+            {/* My Gamertag */}
+            <div className="gh-settings-section">
+              <label className="gh-settings-label">My Gamertag</label>
+              <p className="gh-settings-hint">Used to auto-fill the search field and identify your side in games.</p>
+              <div className="gh-settings-row">
+                <input
+                  type="text"
+                  className="gh-input"
+                  placeholder="Your gamertag…"
+                  value={myGamertag}
+                  onChange={e => setMyGamertag(e.target.value)}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </div>
+            </div>
+
+            {/* My Friends */}
+            <div className="gh-settings-section">
+              <label className="gh-settings-label">My Friends (co-op partners)</label>
+              <p className="gh-settings-hint">Add gamertags of players you play co-op with (2v2, 3v3). Their tags help identify your side.</p>
+              <div className="gh-settings-row">
+                <input
+                  type="text"
+                  className="gh-input"
+                  placeholder="Friend's gamertag…"
+                  value={friendInput}
+                  onChange={e => setFriendInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addFriend() } }}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <button
+                  type="button"
+                  className="gh-settings-add-btn"
+                  onClick={addFriend}
+                  disabled={!friendInput.trim()}
+                >
+                  + Add
+                </button>
+              </div>
+              {friendTags.length > 0 && (
+                <div className="gh-friend-list">
+                  {friendTags.map(tag => (
+                    <span key={tag} className="gh-friend-chip">
+                      {tag}
+                      <button
+                        type="button"
+                        className="gh-friend-remove"
+                        onClick={() => removeFriend(tag)}
+                        title={`Remove ${tag}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* ── Search form ── */}
       <form className="gh-search-form" onSubmit={handleSearch}>

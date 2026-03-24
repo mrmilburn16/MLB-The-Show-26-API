@@ -7,6 +7,8 @@ const TABS = [
   { key: 'collections',  label: '📦 Collections',      hint: 'Collection cost tracker by team, rarity, and series' },
   { key: 'rosterupdates',label: '📈 Roster Updates',   hint: 'Track rating changes and price impact from roster updates' },
   { key: 'gamehistory',  label: '📜 Game History',     hint: 'Look up any player\'s recent Diamond Dynasty game log' },
+  { key: 'pennystocks',  label: '💰 Penny Stocks',     hint: 'Ultra-cheap cards near quicksell value — bulk exchange fodder or roster update lottery tickets' },
+  { key: 'flipplanner', label: '📋 Flip Planner',     hint: 'Optimize your stub allocation across cards — respects the 20-order-per-card game limit' },
 ]
 
 export default function TabBar({ activeTab, onTabChange, alertCount = 0 }) {

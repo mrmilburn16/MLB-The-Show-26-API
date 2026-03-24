@@ -76,10 +76,18 @@ export const QUICKSELL_NON_LIVE = {
 
 /**
  * Returns the quicksell floor for a card, or null if unknown.
- * `isLive` — true when the card's series_id is the Live Series (1337).
+ * `isLive`  — true when the card's series_id is the Live Series (1337).
+ * `rarity`  — card rarity string ('Diamond'|'Gold'|'Silver'|'Bronze'|'Common').
+ *
+ * Verified in-game values:
+ *   Live Bronze (65-74): 25 stubs    Non-Live Bronze: 12 stubs
+ *   Live Common (≤64):   5 stubs     Non-Live Common: 2 stubs
+ *   Diamond 85-92: see QUICKSELL_LIVE / QUICKSELL_NON_LIVE tables
  */
-export function getQuicksellFloor(ovr, isLive) {
-  if (ovr == null || ovr < 85) return null   // only Diamond cards have meaningful floors
+export function getQuicksellFloor(ovr, isLive, rarity) {
+  if (rarity === 'Common') return isLive ? 5 : 2
+  if (rarity === 'Bronze') return isLive ? 25 : 12
+  if (ovr == null || ovr < 85) return null   // Gold/Silver floors unknown; Diamond only below
   const table = isLive ? QUICKSELL_LIVE : QUICKSELL_NON_LIVE
   return table[ovr] ?? null
 }

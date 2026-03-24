@@ -32,7 +32,7 @@ export function enrichListing(l) {
   const item           = l.item || {}
   const isLive         = String(item.series_id) === '1337' || item.series === 'Live'
   const ovr            = typeof item.ovr === 'number' ? item.ovr : parseInt(item.ovr, 10)
-  const quicksellFloor = getQuicksellFloor(ovr, isLive)
+  const quicksellFloor = getQuicksellFloor(ovr, isLive, item.rarity)
 
   // When there's no active bid, use the quicksell floor as the worst-case buy price.
   // This gives a realistic profit estimate: you can never pay less than QS for a card.

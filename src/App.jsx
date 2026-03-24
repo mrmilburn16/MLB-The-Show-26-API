@@ -15,9 +15,11 @@ import FullMarketScan    from './components/FullMarketScan'
 import NearQSPanel       from './components/NearQSPanel'
 import SnipeAlertsTab    from './components/SnipeAlertsTab'
 import GameHistory        from './components/GameHistory'
+import PennyStocks        from './components/PennyStocks'
 import CardFinder            from './components/CardFinder'
 import CollectionTracker    from './components/CollectionTracker'
 import RosterUpdates        from './components/RosterUpdates'
+import FlipPlanner          from './components/FlipPlanner'
 import ComparisonTray    from './components/ComparisonTray'
 import ComparisonModal   from './components/ComparisonModal'
 import { useListings }    from './hooks/useListings'
@@ -488,7 +490,7 @@ export default function App() {
 
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} alertCount={snipeAlerts.length} />
 
-      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && activeTab !== 'collections' && activeTab !== 'rosterupdates' && activeTab !== 'snipealerts' && (
+      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && activeTab !== 'collections' && activeTab !== 'rosterupdates' && activeTab !== 'snipealerts' && activeTab !== 'pennystocks' && activeTab !== 'flipplanner' && (
         <PresetBar
           presets={presets}
           activeId={activePresetId}
@@ -502,7 +504,7 @@ export default function App() {
         />
       )}
 
-      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && activeTab !== 'collections' && activeTab !== 'rosterupdates' && activeTab !== 'snipealerts' && (
+      {activeTab !== 'scanner' && activeTab !== 'gamehistory' && activeTab !== 'cardfinder' && activeTab !== 'collections' && activeTab !== 'rosterupdates' && activeTab !== 'snipealerts' && activeTab !== 'pennystocks' && activeTab !== 'flipplanner' && (
         <FiltersBar
           filters={filters}
           onFilterChange={handleFilterChange}
@@ -551,6 +553,12 @@ export default function App() {
         </main>
       )}
 
+      {activeTab === 'pennystocks' && (
+        <main className="main">
+          <PennyStocks />
+        </main>
+      )}
+
       {activeTab === 'cardfinder' && (
         <main className="main">
           <CardFinder allListings={autoMarket.allListings} />
@@ -566,6 +574,15 @@ export default function App() {
       {activeTab === 'rosterupdates' && (
         <main className="main">
           <RosterUpdates allListings={autoMarket.allListings} />
+        </main>
+      )}
+
+      {activeTab === 'flipplanner' && (
+        <main className="main">
+          <FlipPlanner
+            allListings={autoMarket.allListings}
+            velocityMap={velocityMap}
+          />
         </main>
       )}
 
